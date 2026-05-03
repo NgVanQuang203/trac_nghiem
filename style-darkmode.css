@@ -3,16 +3,22 @@
    ========================================= */
 
 body.dark-mode {
-  --bg-body: #0f172a; /* Nền trang (Slate-950) */
-  --bg-card: #1e293b; /* Nền thẻ (Slate-800) */
-  --bg-input: #020617; /* Nền input (Slate-950) */
+  --bg-body: #0f172a;
+  /* Nền trang (Slate-950) */
+  --bg-card: #1e293b;
+  /* Nền thẻ (Slate-800) */
+  --bg-input: #020617;
+  /* Nền input (Slate-950) */
 
   /* --- ĐÃ ĐỔI: Màu chữ chính sang Xám Bạc (Slate-300) cho dịu mắt --- */
   --text-main: #cbd5e1;
 
-  --text-muted: #94a3b8; /* Chữ phụ (Slate-400) */
-  --border: #334155; /* Viền (Slate-700) */
-  --highlight: #3b82f6; /* Màu xanh chủ đạo */
+  --text-muted: #94a3b8;
+  /* Chữ phụ (Slate-400) */
+  --border: #334155;
+  /* Viền (Slate-700) */
+  --highlight: #3b82f6;
+  /* Màu xanh chủ đạo */
 }
 
 /* 1. NỀN TẢNG & TEXT CƠ BẢN */
@@ -54,7 +60,8 @@ body.dark-mode .qnav-item,
 body.dark-mode .btn-drive-nav,
 body.dark-mode .btn-outline {
   background-color: var(--bg-input) !important;
-  color: #cbd5e1 !important; /* Đổi màu chữ input sang xám bạc */
+  color: #cbd5e1 !important;
+  /* Đổi màu chữ input sang xám bạc */
   border-color: var(--border) !important;
 }
 
@@ -64,17 +71,21 @@ body.dark-mode .btn-outline {
 body.dark-mode .history-summary-alert {
   background-color: rgba(6, 78, 59, 0.4) !important;
   border-color: #065f46 !important;
-  color: #86efac !important; /* Giữ xanh sáng để nổi bật */
+  color: #86efac !important;
+  /* Giữ xanh sáng để nổi bật */
 }
+
 body.dark-mode .file-status.ready {
   background-color: rgba(6, 78, 59, 0.4) !important;
   color: #86efac !important;
   border-color: #065f46 !important;
 }
+
 body.dark-mode .c-stat-box.best {
   background-color: rgba(6, 78, 59, 0.3) !important;
   border-color: #065f46 !important;
 }
+
 body.dark-mode .c-stat-box.best .c-stat-val {
   color: #86efac !important;
 }
@@ -87,33 +98,41 @@ body.dark-mode .c-stat-box {
 
 /* 5. SỬA MÀU CHỮ CÂU HỎI & ĐÁP ÁN */
 body.dark-mode .question-text {
-  color: #cbd5e1 !important; /* Chữ câu hỏi xám bạc */
+  color: #cbd5e1 !important;
+  /* Chữ câu hỏi xám bạc */
   font-weight: 500;
 }
+
 body.dark-mode .question-header span {
   color: #60a5fa !important;
 }
+
 body.dark-mode .option-label {
   background-color: #0f172a !important;
-  color: #94a3b8 !important; /* Đáp án chưa chọn màu tối hơn chút */
+  color: #94a3b8 !important;
+  /* Đáp án chưa chọn màu tối hơn chút */
   border-color: var(--border) !important;
 }
+
 body.dark-mode .option-label:hover {
   background-color: #334155 !important;
   border-color: #60a5fa !important;
   color: #e2e8f0 !important;
 }
-body.dark-mode .option-input:checked + .option-label {
+
+body.dark-mode .option-input:checked+.option-label {
   background-color: rgba(30, 58, 138, 0.5) !important;
   color: #93c5fd !important;
   border-color: #3b82f6 !important;
 }
+
 /* Màu đúng/sai */
 body.dark-mode .option-label.correct {
   background-color: rgba(6, 78, 59, 0.5) !important;
   color: #86efac !important;
   border-color: #059669 !important;
 }
+
 body.dark-mode .option-label.incorrect {
   background-color: rgba(127, 29, 29, 0.4) !important;
   color: #fca5a5 !important;
@@ -127,32 +146,41 @@ body.dark-mode .modal-body {
   border-color: var(--border) !important;
   color: var(--text-main) !important;
 }
+
 body.dark-mode .history-tabs {
   background-color: #0f172a !important;
   border-bottom-color: var(--border) !important;
 }
+
 body.dark-mode .tab-btn {
   color: var(--text-muted) !important;
 }
+
 body.dark-mode .tab-btn:hover {
   background-color: #1e293b !important;
   color: #e2e8f0 !important;
 }
+
 body.dark-mode .tab-btn.active {
   color: #60a5fa !important;
   background-color: rgba(30, 64, 175, 0.2) !important;
   border-bottom-color: #60a5fa !important;
 }
+
 body.dark-mode .history-overview {
   background-color: rgba(30, 58, 138, 0.3) !important;
   border-bottom-color: #1e40af !important;
 }
+
 body.dark-mode .overview-val {
-  color: #e2e8f0 !important; /* Số liệu sáng vừa phải */
+  color: #e2e8f0 !important;
+  /* Số liệu sáng vừa phải */
 }
+
 body.dark-mode .overview-val[style*="#16a34a"] {
   color: #4ade80 !important;
 }
+
 body.dark-mode .overview-val[style*="#dc2626"] {
   color: #f87171 !important;
 }
@@ -160,66 +188,84 @@ body.dark-mode .overview-val[style*="#dc2626"] {
 body.dark-mode .overview-label {
   color: #94a3b8 !important;
 }
+
 body.dark-mode .stats-filter-wrapper label {
   color: #94a3b8 !important;
 }
+
 body.dark-mode #statsFilter {
   background-color: #020617 !important;
   color: #cbd5e1 !important;
   border: 1px solid var(--border) !important;
 }
+
 body.dark-mode .history-card-wrapper {
   background-color: var(--bg-card) !important;
   border-color: var(--border) !important;
 }
+
 body.dark-mode .history-summary {
   background-color: transparent !important;
   color: #cbd5e1 !important;
 }
+
 body.dark-mode .history-summary:hover {
   background-color: #334155 !important;
 }
+
 body.dark-mode .hist-name {
-  color: #e2e8f0 !important; /* Tên đề sáng hơn chút */
+  color: #e2e8f0 !important;
+  /* Tên đề sáng hơn chút */
 }
+
 body.dark-mode .hist-date {
   color: #64748b !important;
 }
+
 body.dark-mode .history-details-box {
   background-color: #020617 !important;
   border-top-color: var(--border) !important;
 }
+
 body.dark-mode .hist-q-item {
   background-color: #1e293b !important;
   border-color: var(--border) !important;
   color: #cbd5e1 !important;
 }
+
 body.dark-mode .hist-q-item.hist-correct {
   border-left-color: #22c55e !important;
   background-color: rgba(6, 78, 59, 0.3) !important;
 }
+
 body.dark-mode .hist-q-item.hist-wrong {
   border-left-color: #ef4444 !important;
   background-color: rgba(127, 29, 29, 0.3) !important;
 }
+
 body.dark-mode .hist-correct-ans {
   color: #4ade80 !important;
   border-top-color: #334155 !important;
 }
+
 body.dark-mode .weak-item {
   background-color: #1e293b !important;
   border-color: var(--border) !important;
 }
+
 body.dark-mode .weak-q {
   color: #e2e8f0 !important;
 }
+
 body.dark-mode .weak-content {
   color: #94a3b8 !important;
 }
+
 body.dark-mode .weak-ans {
   background-color: rgba(6, 78, 59, 0.4) !important;
   color: #86efac !important;
 }
+
 body.dark-mode .weak-count {
   background-color: rgba(127, 29, 29, 0.4) !important;
   color: #fca5a5 !important;
@@ -232,79 +278,100 @@ body.dark-mode #aiResultBox {
   border-color: #334155 !important;
   color: #cbd5e1 !important;
 }
+
 body.dark-mode #aiResultBox.expanded {
   background-color: rgba(2, 6, 23, 0.9) !important;
 }
+
 body.dark-mode #aiResultBox.expanded #aiContent {
   background-color: #1e293b !important;
   color: #cbd5e1 !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
 }
+
 body.dark-mode .btn-close-ai-expanded {
   background-color: #334155 !important;
   color: #cbd5e1 !important;
   border-color: #475569 !important;
 }
+
 body.dark-mode .btn-close-ai-expanded:hover {
   background-color: #ef4444 !important;
   color: white !important;
 }
+
 body.dark-mode .ai-response-item {
   background-color: #0f172a !important;
   border-color: #334155 !important;
   box-shadow: none !important;
 }
+
 body.dark-mode .ai-response-q {
   color: #818cf8 !important;
   border-bottom-color: #334155 !important;
 }
+
 body.dark-mode .ai-explanation {
-  color: #94a3b8 !important; /* Giải thích màu xám dịu */
+  color: #94a3b8 !important;
+  /* Giải thích màu xám dịu */
 }
+
 body.dark-mode .ai-response-tip {
   background-color: rgba(69, 26, 3, 0.4) !important;
   border-color: #92400e !important;
   color: #fbbf24 !important;
 }
+
 body.dark-mode .ai-response-tip::before {
   color: #f59e0b !important;
 }
+
 body.dark-mode .ai-card {
   background-color: #0f172a !important;
   border-color: #334155 !important;
 }
+
 body.dark-mode .ai-card-title {
   color: #94a3b8 !important;
 }
+
 body.dark-mode .ai-card-content {
   color: #cbd5e1 !important;
 }
+
 body.dark-mode .card-weakness {
   background-color: rgba(69, 10, 10, 0.4) !important;
   border-left-color: #ef4444 !important;
 }
+
 body.dark-mode .card-weakness .ai-card-title {
   color: #fca5a5 !important;
 }
+
 body.dark-mode .card-solution {
   background-color: rgba(23, 37, 84, 0.4) !important;
   border-left-color: #3b82f6 !important;
 }
+
 body.dark-mode .card-solution .ai-card-title {
   color: #93c5fd !important;
 }
+
 body.dark-mode #aiLoading {
   color: #a78bfa !important;
 }
+
 body.dark-mode .spinner {
   border-color: rgba(255, 255, 255, 0.1);
   border-top-color: #a78bfa;
 }
+
 body.dark-mode .btn-icon-small {
   background-color: #1e293b !important;
   color: #94a3b8 !important;
   border-color: #334155 !important;
 }
+
 body.dark-mode .btn-icon-small:hover {
   color: #60a5fa !important;
   border-color: #60a5fa !important;
@@ -314,22 +381,28 @@ body.dark-mode .btn-icon-small:hover {
 body.dark-mode .d-item {
   color: var(--text-main);
 }
+
 body.dark-mode .d-item:hover {
   background: #334155;
   border-color: #60a5fa;
 }
+
 body.dark-mode .d-name {
   color: #e2e8f0;
 }
+
 body.dark-mode .drive-subtitle {
   color: #94a3b8;
 }
+
 body.dark-mode .st-title {
   color: #e2e8f0 !important;
 }
+
 body.dark-mode .st-desc {
   color: #94a3b8 !important;
 }
+
 body.dark-mode .study-card:hover {
   background-color: #334155 !important;
 }
@@ -338,6 +411,7 @@ body.dark-mode .study-card:hover {
 body.dark-mode ::-webkit-scrollbar-track {
   background: #0f172a;
 }
+
 body.dark-mode ::-webkit-scrollbar-thumb {
   background: #475569;
   border-radius: 4px;
@@ -351,36 +425,44 @@ body.dark-mode .btn-fc-nav {
   border-color: var(--border);
   color: var(--text-main);
 }
+
 body.dark-mode .fc-question-text {
   color: #e2e8f0 !important;
 }
+
 body.dark-mode .fc-option-item {
   background: #0f172a;
   border-color: var(--border);
   color: #94a3b8 !important;
 }
+
 body.dark-mode .fc-option-item:hover {
   border-color: var(--highlight);
   background: #1e293b;
   color: #e2e8f0 !important;
 }
+
 body.dark-mode .fc-option-item.correct {
   background: rgba(6, 78, 59, 0.5) !important;
   color: #86efac !important;
   border-color: #059669 !important;
 }
+
 body.dark-mode .fc-option-item.incorrect {
   background: rgba(127, 29, 29, 0.4) !important;
   color: #fca5a5 !important;
   border-color: #dc2626 !important;
 }
+
 body.dark-mode .btn-fc-nav:hover {
   background: #334155;
 }
+
 body.dark-mode .skeleton {
   background: #1e293b;
   background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
 }
+
 body.dark-mode #btnCloseHistory {
   color: #e2e8f0;
 }
@@ -393,61 +475,78 @@ body.dark-mode #btnCloseHistory {
 
 /* 1. Câu ĐÃ LÀM (Màu xanh dương) */
 body.dark-mode .qnav-item.nav-answered {
-  background-color: rgba(30, 58, 138, 0.6) !important; /* Xanh than đậm */
+  background-color: rgba(30, 58, 138, 0.6) !important;
+  /* Xanh than đậm */
   border-color: #3b82f6 !important;
-  color: #93c5fd !important; /* Chữ xanh trời sáng */
+  color: #93c5fd !important;
+  /* Chữ xanh trời sáng */
 }
 
 /* 2. Câu ĐÚNG (Màu xanh lá - Khi nộp bài) */
 body.dark-mode .qnav-item.nav-correct {
-  background-color: rgba(6, 78, 59, 0.8) !important; /* Xanh rêu đậm */
+  background-color: rgba(6, 78, 59, 0.8) !important;
+  /* Xanh rêu đậm */
   border-color: #059669 !important;
-  color: #86efac !important; /* Chữ xanh ngọc sáng */
+  color: #86efac !important;
+  /* Chữ xanh ngọc sáng */
 }
 
 /* 3. Câu SAI (Màu đỏ - Khi nộp bài) */
 body.dark-mode .qnav-item.nav-incorrect {
-  background-color: rgba(127, 29, 29, 0.8) !important; /* Đỏ rượu đậm */
+  background-color: rgba(127, 29, 29, 0.8) !important;
+  /* Đỏ rượu đậm */
   border-color: #ef4444 !important;
-  color: #fca5a5 !important; /* Chữ đỏ hồng sáng */
+  color: #fca5a5 !important;
+  /* Chữ đỏ hồng sáng */
 }
 
 /* --- B. TRẠNG THÁI ĐÁP ÁN (OPTIONS) --- */
 
 /* 1. Đang chọn (Selected) - Làm nổi bật hơn */
-body.dark-mode .option-input:checked + .option-label {
-  background-color: rgba(
-    29,
-    78,
-    216,
-    0.25
-  ) !important; /* Nền xanh dương trong suốt */
-  border-color: #60a5fa !important; /* Viền sáng */
-  color: #bfdbfe !important; /* Chữ xanh nhạt dễ đọc */
-  box-shadow: 0 0 0 1px #60a5fa !important; /* Hiệu ứng phát sáng nhẹ */
+body.dark-mode .option-input:checked+.option-label {
+  background-color: rgba(29,
+      78,
+      216,
+      0.25) !important;
+  /* Nền xanh dương trong suốt */
+  border-color: #60a5fa !important;
+  /* Viền sáng */
+  color: #bfdbfe !important;
+  /* Chữ xanh nhạt dễ đọc */
+  box-shadow: 0 0 0 1px #60a5fa !important;
+  /* Hiệu ứng phát sáng nhẹ */
 }
 
 /* 2. Đáp án ĐÚNG (Correct Result) */
 body.dark-mode .option-label.correct {
-  background-color: rgba(20, 83, 45, 0.6) !important; /* Nền xanh lá đậm */
-  border-color: #4ade80 !important; /* Viền xanh sáng */
-  color: #86efac !important; /* Chữ xanh sáng nổi bật */
+  background-color: rgba(20, 83, 45, 0.6) !important;
+  /* Nền xanh lá đậm */
+  border-color: #4ade80 !important;
+  /* Viền xanh sáng */
+  color: #86efac !important;
+  /* Chữ xanh sáng nổi bật */
   font-weight: bold;
 }
 
 /* 3. Đáp án SAI (Incorrect Result) */
 body.dark-mode .option-label.incorrect {
-  background-color: rgba(127, 29, 29, 0.6) !important; /* Nền đỏ đậm */
-  border-color: #f87171 !important; /* Viền đỏ sáng */
-  color: #fca5a5 !important; /* Chữ đỏ sáng */
+  background-color: rgba(127, 29, 29, 0.6) !important;
+  /* Nền đỏ đậm */
+  border-color: #f87171 !important;
+  /* Viền đỏ sáng */
+  color: #fca5a5 !important;
+  /* Chữ đỏ sáng */
   opacity: 1 !important;
 }
 
 /* 4. Thẻ câu hỏi bị khóa sau khi nộp (Locked Card) */
 body.dark-mode .locked-card {
-  background-color: #1e293b !important; /* Giữ nền tối */
-  opacity: 1 !important; /* Không làm mờ quá nhiều để còn đọc được */
-  border: 1px solid #334155; /* Viền xám nhẹ */
+  background-color: #1e293b !important;
+  /* Giữ nền tối */
+  opacity: 1 !important;
+  /* Không làm mờ quá nhiều để còn đọc được */
+  border: 1px solid #334155;
+  /* Viền xám nhẹ */
 }
 
 /* =========================================================
@@ -458,13 +557,16 @@ body.dark-mode .locked-card {
 /* --- A. TĂNG ĐỘ NỔI BẬT CHO CHỮ (TEXT CONTRAST) --- */
 /* Làm chữ câu hỏi sáng hơn (gần như trắng) để tách biệt với nền */
 body.dark-mode .question-text {
-  color: #f1f5f9 !important; /* Slate-100: Sáng rõ nhưng không chói lóa */
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* Bóng nhẹ giúp chữ nổi lên */
+  color: #f1f5f9 !important;
+  /* Slate-100: Sáng rõ nhưng không chói lóa */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  /* Bóng nhẹ giúp chữ nổi lên */
 }
 
 /* Các chữ đáp án bình thường cũng sáng lên một chút */
 body.dark-mode .option-label {
-  color: #e2e8f0 !important; /* Slate-200 */
+  color: #e2e8f0 !important;
+  /* Slate-200 */
 }
 
 /* --- B. KHUNG CÂU HỎI SAU KHI CHẤM (CARD BORDER) --- */
@@ -472,26 +574,28 @@ body.dark-mode .option-label {
 
 /* Câu ĐÚNG: Viền xanh lá, nền xanh rêu rất nhạt */
 body.dark-mode .question-card.correct {
-  border: 2px solid #059669 !important; /* Viền xanh lá đậm rõ nét */
-  background-color: rgba(
-    6,
-    78,
-    59,
-    0.25
-  ) !important; /* Nền xanh tối trong suốt */
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1) !important; /* Ánh sáng xanh nhẹ */
+  border: 2px solid #059669 !important;
+  /* Viền xanh lá đậm rõ nét */
+  background-color: rgba(6,
+      78,
+      59,
+      0.25) !important;
+  /* Nền xanh tối trong suốt */
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1) !important;
+  /* Ánh sáng xanh nhẹ */
 }
 
 /* Câu SAI: Viền đỏ, nền đỏ rượu rất nhạt */
 body.dark-mode .question-card.incorrect {
-  border: 2px solid #dc2626 !important; /* Viền đỏ đậm rõ nét */
-  background-color: rgba(
-    127,
-    29,
-    29,
-    0.25
-  ) !important; /* Nền đỏ tối trong suốt */
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.1) !important; /* Ánh sáng đỏ nhẹ */
+  border: 2px solid #dc2626 !important;
+  /* Viền đỏ đậm rõ nét */
+  background-color: rgba(127,
+      29,
+      29,
+      0.25) !important;
+  /* Nền đỏ tối trong suốt */
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.1) !important;
+  /* Ánh sáng đỏ nhẹ */
 }
 
 /* --- C. ĐÁP ÁN BÊN TRONG (OPTIONS) --- */
@@ -499,17 +603,22 @@ body.dark-mode .question-card.incorrect {
 /* Đáp án ĐÚNG (Màu xanh neon dịu, chữ trắng) */
 body.dark-mode .option-label.correct {
   background-color: rgba(21, 128, 61, 0.4) !important;
-  border-color: #4ade80 !important; /* Viền xanh sáng */
-  color: #ffffff !important; /* Chữ trắng tinh cho dễ đọc */
+  border-color: #4ade80 !important;
+  /* Viền xanh sáng */
+  color: #ffffff !important;
+  /* Chữ trắng tinh cho dễ đọc */
   font-weight: bold;
 }
 
 /* Đáp án SAI mà người dùng chọn (Đỏ cam) */
 body.dark-mode .option-label.incorrect {
   background-color: rgba(153, 27, 27, 0.4) !important;
-  border-color: #f87171 !important; /* Viền đỏ sáng */
-  color: #fca5a5 !important; /* Chữ đỏ hồng */
-  opacity: 1 !important; /* Không làm mờ */
+  border-color: #f87171 !important;
+  /* Viền đỏ sáng */
+  color: #fca5a5 !important;
+  /* Chữ đỏ hồng */
+  opacity: 1 !important;
+  /* Không làm mờ */
 }
 
 /* --- D. BẢNG DANH SÁCH CÂU HỎI (SIDEBAR NAV) --- */
@@ -517,30 +626,36 @@ body.dark-mode .option-label.incorrect {
 
 /* Ô câu hỏi ĐÃ LÀM (Chưa nộp) */
 body.dark-mode .qnav-item.nav-answered {
-  background-color: #1e3a8a !important; /* Xanh dương đậm */
+  background-color: #1e3a8a !important;
+  /* Xanh dương đậm */
   border-color: #60a5fa !important;
   color: #ffffff !important;
 }
 
 /* Ô câu hỏi ĐÚNG (Sau khi nộp) */
 body.dark-mode .qnav-item.nav-correct {
-  background-color: #15803d !important; /* Xanh lá đậm */
-  border-color: #4ade80 !important; /* Viền xanh sáng */
+  background-color: #15803d !important;
+  /* Xanh lá đậm */
+  border-color: #4ade80 !important;
+  /* Viền xanh sáng */
   color: #ffffff !important;
   font-weight: bold;
 }
 
 /* Ô câu hỏi SAI (Sau khi nộp) */
 body.dark-mode .qnav-item.nav-incorrect {
-  background-color: #b91c1c !important; /* Đỏ đậm */
-  border-color: #f87171 !important; /* Viền đỏ sáng */
+  background-color: #b91c1c !important;
+  /* Đỏ đậm */
+  border-color: #f87171 !important;
+  /* Viền đỏ sáng */
   color: #ffffff !important;
   font-weight: bold;
 }
 
 /* Ô hiện tại đang xem (Active/Focus) */
 body.dark-mode .qnav-item:focus {
-  outline: 2px solid #f59e0b; /* Viền vàng cam khi bấm vào */
+  outline: 2px solid #f59e0b;
+  /* Viền vàng cam khi bấm vào */
   outline-offset: 2px;
 }
 
@@ -564,12 +679,11 @@ select {
 /* --- B. MÀU BÔI ĐEN VĂN BẢN (TEXT SELECTION) --- */
 /* Đổi màu xanh mặc định thành màu hợp tông dark mode */
 body.dark-mode ::selection {
-  background-color: rgba(
-    59,
-    130,
-    246,
-    0.4
-  ) !important; /* Xanh dương trong suốt */
+  background-color: rgba(59,
+      130,
+      246,
+      0.4) !important;
+  /* Xanh dương trong suốt */
   color: #ffffff !important;
 }
 
@@ -579,43 +693,52 @@ body.dark-mode input:focus,
 body.dark-mode select:focus,
 body.dark-mode textarea:focus {
   outline: none !important;
-  border-color: #60a5fa !important; /* Viền xanh sáng */
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important; /* Hiệu ứng tỏa sáng nhẹ */
-  background-color: #1e293b !important; /* Giữ nền tối */
+  border-color: #60a5fa !important;
+  /* Viền xanh sáng */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+  /* Hiệu ứng tỏa sáng nhẹ */
+  background-color: #1e293b !important;
+  /* Giữ nền tối */
 }
 
 /* --- D. THANH TIẾN ĐỘ (PROGRESS BAR) --- */
 /* Làm rõ phần chưa chạy của thanh tiến độ trên cùng */
 body.dark-mode .progress-container {
-  background-color: #334155 !important; /* Màu nền của rãnh thanh tiến độ */
+  background-color: #334155 !important;
+  /* Màu nền của rãnh thanh tiến độ */
 }
+
 body.dark-mode #examProgressBar {
-  background: linear-gradient(
-    90deg,
-    #3b82f6,
-    #8b5cf6
-  ) !important; /* Gradient Xanh-Tím đẹp mắt */
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); /* Hiệu ứng neon phát sáng */
+  background: linear-gradient(90deg,
+      #3b82f6,
+      #8b5cf6) !important;
+  /* Gradient Xanh-Tím đẹp mắt */
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  /* Hiệu ứng neon phát sáng */
 }
 
 /* --- E. MODAL GOOGLE DRIVE (TINH CHỈNH) --- */
 /* Đảm bảo icon folder và file nổi bật trên nền tối */
 body.dark-mode .d-icon-box svg rect {
-  stroke: #475569 !important; /* Viền icon file nhạt đi chút */
-  fill: #1e293b !important; /* Nền icon file tối lại */
+  stroke: #475569 !important;
+  /* Viền icon file nhạt đi chút */
+  fill: #1e293b !important;
+  /* Nền icon file tối lại */
 }
+
 body.dark-mode .d-item:hover {
-  background-color: rgba(
-    59,
-    130,
-    246,
-    0.15
-  ) !important; /* Hover vào file/folder sáng nhẹ */
+  background-color: rgba(59,
+      130,
+      246,
+      0.15) !important;
+  /* Hover vào file/folder sáng nhẹ */
   border-color: #60a5fa !important;
 }
+
 /* Đường dẫn thư mục (Breadcrumb) */
 body.dark-mode .drive-breadcrumb {
-  color: #93c5fd !important; /* Xanh nhạt dễ đọc */
+  color: #93c5fd !important;
+  /* Xanh nhạt dễ đọc */
 }
 
 /* --- F. BIỂU ĐỒ CHART.JS (FIX MÀU LƯỚI) --- */
@@ -626,8 +749,10 @@ body.dark-mode .chart-container {
   border: 1px solid #334155 !important;
   border-radius: 12px;
 }
+
 /* Thêm vào cuối style-darkmode.css */
 @media (max-width: 768px) {
+
   /* Tăng kích thước vùng bấm cho các nút trên mobile để dễ thao tác hơn */
   body.dark-mode .btn-icon-small,
   body.dark-mode .header-toggle-btn {
@@ -682,6 +807,7 @@ body.dark-mode .user-stats-card.rank-1 {
   background: #1e293b;
   border-color: #334155;
 }
+
 body.dark-mode .rank-1 .level-badge {
   background: #334155;
   color: #94a3b8;
@@ -690,22 +816,27 @@ body.dark-mode .rank-1 .level-badge {
 
 /* Rank 2 (Elite) - Dark (Biến thành Neon Vàng/Xanh) */
 body.dark-mode .user-stats-card.rank-2 {
-  background: #1e293b; /* Về nền tối */
-  border-color: #facc15; /* Viền vàng neon */
+  background: #1e293b;
+  /* Về nền tối */
+  border-color: #facc15;
+  /* Viền vàng neon */
   box-shadow: 0 0 15px rgba(250, 204, 21, 0.2);
 }
+
 body.dark-mode .rank-2 .level-badge {
   background: rgba(250, 204, 21, 0.2);
   color: #facc15;
   text-shadow: 0 0 5px rgba(250, 204, 21, 0.5);
 }
+
 body.dark-mode .rank-2 .level-title {
   text-shadow: 0 0 8px rgba(250, 204, 21, 0.6);
 }
 
 /* Rank 4 (Legendary) - Tăng cường độ sáng trong đêm */
 body.dark-mode .user-stats-card.rank-4 {
-  box-shadow: 0 0 40px rgba(124, 58, 237, 0.6); /* Glow tím lan tỏa mạnh hơn */
+  box-shadow: 0 0 40px rgba(124, 58, 237, 0.6);
+  /* Glow tím lan tỏa mạnh hơn */
 }
 
 /* =========================================
@@ -714,23 +845,246 @@ body.dark-mode .user-stats-card.rank-4 {
 
 /* 1. Màu mặc định cho Streak (Cấp thấp) */
 body.dark-mode .streak-badge {
-  color: #f1f5f9 !important; /* Chữ màu trắng sáng */
-  background: rgba(255, 255, 255, 0.1) !important; /* Nền mờ sáng nhẹ */
+  color: #f1f5f9 !important;
+  /* Chữ màu trắng sáng */
+  background: rgba(255, 255, 255, 0.1) !important;
+  /* Nền mờ sáng nhẹ */
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
 /* 2. Streak cho Rank 3 (Đại Sư - Lửa) */
 body.dark-mode .rank-3 .streak-badge {
-  color: #fbbf24 !important; /* Màu vàng cam rực rỡ */
-  background: rgba(234, 88, 12, 0.2) !important; /* Nền cam tối */
+  color: #fbbf24 !important;
+  /* Màu vàng cam rực rỡ */
+  background: rgba(234, 88, 12, 0.2) !important;
+  /* Nền cam tối */
   border-color: #f97316 !important;
-  text-shadow: 0 0 5px rgba(251, 191, 36, 0.5); /* Phát sáng nhẹ */
+  text-shadow: 0 0 5px rgba(251, 191, 36, 0.5);
+  /* Phát sáng nhẹ */
 }
 
 /* 3. Streak cho Rank 4 (Huyền Thoại) */
 body.dark-mode .rank-4 .streak-badge {
-  color: #fef08a !important; /* Vàng chanh sáng */
+  color: #fef08a !important;
+  /* Vàng chanh sáng */
   background: rgba(253, 224, 71, 0.15) !important;
   border-color: #eab308 !important;
-  text-shadow: 0 0 8px #facc15; /* Glow mạnh */
+  text-shadow: 0 0 8px #facc15;
+  /* Glow mạnh */
+}
+
+/* =========================================
+   13. CLOUD EXPLORER UI — DARK MODE
+   ========================================= */
+
+body.dark-mode .cloud-toolbar {
+  background: #1e293b !important;
+  border-bottom-color: #334155 !important;
+}
+
+body.dark-mode .cloud-breadcrumb {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .bc-item:hover {
+  background: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .btn-cloud-action {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .btn-cloud-action:hover {
+  background: #1e293b !important;
+  border-color: #64748b !important;
+}
+
+body.dark-mode .btn-cloud-upload {
+  background: rgba(30, 64, 175, 0.3) !important;
+  border-color: #1e40af !important;
+  color: #60a5fa !important;
+}
+
+body.dark-mode .cloud-upload-wrapper:hover .btn-cloud-upload {
+  background: rgba(30, 64, 175, 0.6) !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+body.dark-mode .cloud-body {
+  background: #0f172a !important;
+}
+
+body.dark-mode .cloud-body.drag-over {
+  background: rgba(30, 58, 138, 0.2) !important;
+  border-color: #6366f1 !important;
+}
+
+body.dark-mode .cloud-item {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .cloud-item.type-folder {
+  background: #0f172a !important;
+}
+
+body.dark-mode .cloud-item:hover {
+  border-color: #60a5fa !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+}
+
+body.dark-mode .cloud-name {
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .cloud-date {
+  color: #64748b !important;
+}
+
+body.dark-mode .cloud-item-actions {
+  background: rgba(15, 23, 42, 0.85) !important;
+}
+
+body.dark-mode .cloud-empty {
+  color: #64748b !important;
+}
+
+body.dark-mode .cloud-alert-box {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+}
+
+body.dark-mode .cloud-alert-title {
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .cloud-alert-message {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .cloud-alert-input {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .cloud-alert-input:focus {
+  border-color: #3b82f6 !important;
+}
+
+body.dark-mode .cloud-alert-btn.cancel {
+  background: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .cloud-alert-btn.cancel:hover {
+  background: #475569 !important;
+  color: #f1f5f9 !important;
+}
+
+
+/* ── Move Modal Dark Mode ── */
+body.dark-mode .move-modal-box {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+}
+
+body.dark-mode .move-footer {
+  background: #0f172a !important;
+  border-top-color: #334155 !important;
+}
+
+body.dark-mode .move-item {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .move-item:hover {
+  background: #334155 !important;
+  border-color: #3b82f6 !important;
+}
+
+body.dark-mode .move-item-name {
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .move-target-label {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .move-target-label b {
+  color: #f1f5f9 !important;
+}
+
+/* Question Status Badges for Dark Mode */
+body.dark-mode .q-status-badge {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .q-status-correct {
+  background: #166534;
+  color: #bbf7d0;
+}
+
+body.dark-mode .q-status-incorrect {
+  background: #991b1b;
+  color: #fecaca;
+}
+
+body.dark-mode .q-status-unanswered {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+
+/* --- AI MARKDOWN DARK MODE --- */
+body.dark-mode .markdown-body {
+  color: #cbd5e1;
+}
+
+body.dark-mode .markdown-body h3 {
+  color: #93c5fd;
+  border-bottom-color: #334155;
+}
+
+body.dark-mode .markdown-body ul li {
+  background: #1e293b;
+  border-color: #334155;
+  border-left-color: #3b82f6;
+}
+
+body.dark-mode .markdown-body ul li:hover {
+  background: #0f172a;
+}
+
+body.dark-mode .markdown-body strong {
+  color: #fca5a5;
+  background: rgba(153, 27, 27, 0.4);
+}
+
+body.dark-mode .markdown-body blockquote {
+  background: rgba(217, 119, 6, 0.15);
+  border-left-color: #f59e0b;
+  color: #fcd34d;
+}
+
+/* --- Phân tích 1 câu hỏi AI --- */
+body.dark-mode .q-analysis-header {
+  background: rgba(30, 58, 138, 0.3);
+  /* Xanh đen nhạt */
+  border-left-color: #3b82f6;
+  box-shadow: none;
+}
+
+body.dark-mode .q-analysis-header h4 {
+  color: #93c5fd;
+}
+
+body.dark-mode .q-analysis-header p {
+  color: #e2e8f0;
 }

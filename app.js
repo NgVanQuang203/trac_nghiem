@@ -1,7 +1,7 @@
 // ========================
 // IMPORT GOOGLE GEMINI SDK
 // ========================
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+//import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
 // ========================
 // QUẢN LÝ API KEY (ĐỒNG BỘ ĐA THIẾT BỊ QUA FIREBASE)
@@ -9,46 +9,73 @@ import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 let API_KEYS = [];
 let currentKeyIndex = 0;
 
+let AI_PROVIDER = "gemini"; // "gemini" hoặc "groq"
+let GROQ_KEYS = [];
+let currentGroqKeyIndex = 0;
+
+function updateAIUI() {
+  const label = document.getElementById("activeAIProviderLabel");
+  if (label) {
+    label.textContent = AI_PROVIDER.toUpperCase();
+    if (AI_PROVIDER === "groq") {
+      label.style.background = "#fef3c7";
+      label.style.color = "#92400e";
+    } else {
+      label.style.background = "#e0e7ff";
+      label.style.color = "#4338ca";
+    }
+  }
+}
+
+// Hệ thống bảo vệ Focus để sửa lỗi nhảy App trên Windows
+window.forceFocusBack = function () {
+  const recapturingFocus = () => {
+    window.focus();
+    document.body.focus();
+    // Thêm một micro-task để đảm bảo focus được thực thi sau khi OS trả lại quyền
+    setTimeout(() => {
+      window.focus();
+      if (document.activeElement) document.activeElement.blur();
+    }, 50);
+  };
+  // Lắng nghe sự kiện focus tiếp theo (khi hộp thoại file đóng)
+  window.addEventListener('focus', recapturingFocus, { once: true });
+};
+
 // 1. Hàm lưu Key (Vừa lưu máy này, vừa lưu lên Cloud)
-async function saveKeysToStorage(keysArray) {
+async function saveKeysToStorage(keysArray, provider = "gemini") {
   const cleanKeys = keysArray.map((k) => k.trim()).filter((k) => k.length > 10);
 
-  if (cleanKeys.length > 0) {
+  if (provider === "gemini") {
     API_KEYS = cleanKeys;
-
-    // A. Lưu vào máy hiện tại (để dùng nhanh)
     localStorage.setItem("gemini_api_keys", JSON.stringify(cleanKeys));
-
-    // B. Lưu lên Cloud (Firebase) để đồng bộ sang máy khác
-    const user = auth.currentUser;
-    if (user) {
-      try {
-        await db.collection("users").doc(user.uid).set(
-          {
-            apiKeys: cleanKeys,
-          },
-          { merge: true }
-        ); // merge: true để không mất lịch sử thi
-        alert(
-          `✅ Đã lưu ${cleanKeys.length} Key vào tài khoản!\nGiờ bạn có thể dùng trên mọi thiết bị.`
-        );
-      } catch (e) {
-        console.error("Lỗi lưu Cloud:", e);
-        alert(
-          "⚠️ Đã lưu vào máy này, nhưng lỗi lưu lên Cloud (kiểm tra mạng)."
-        );
-      }
-    } else {
-      alert(
-        `✅ Đã lưu ${cleanKeys.length} Key vào trình duyệt này.\n(Hãy đăng nhập để đồng bộ sang điện thoại!)`
-      );
-    }
-
-    // Reset index để dùng key mới ngay
     currentKeyIndex = 0;
   } else {
-    alert("❌ Danh sách Key không hợp lệ.");
+    GROQ_KEYS = cleanKeys;
+    localStorage.setItem("groq_api_keys", JSON.stringify(cleanKeys));
+    currentGroqKeyIndex = 0;
   }
+
+  // Lưu lên Cloud (Firebase)
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      await db.collection("users").doc(user.uid).set(
+        {
+          apiKeys: API_KEYS,
+          groqKeys: GROQ_KEYS,
+          aiProvider: AI_PROVIDER
+        },
+        { merge: true }
+      );
+      cloudAlert({ title: "Thành công", message: `Đã lưu cấu hình ${provider.toUpperCase()} vào tài khoản!`, icon: "✅" });
+    } catch (e) {
+      console.error("Lỗi lưu Cloud:", e);
+    }
+  } else {
+    cloudAlert({ title: "Thành công", message: `Đã lưu ${cleanKeys.length} Key vào máy này.`, icon: "✅" });
+  }
+  updateAIUI();
 }
 
 // 2. Hàm tải Key từ Cloud về (Chạy khi đăng nhập)
@@ -57,16 +84,21 @@ async function syncKeysFromCloud(user) {
 
   try {
     const doc = await db.collection("users").doc(user.uid).get();
-    if (doc.exists && doc.data().apiKeys) {
-      const cloudKeys = doc.data().apiKeys;
-      if (Array.isArray(cloudKeys) && cloudKeys.length > 0) {
-        API_KEYS = cloudKeys;
-        // Cập nhật luôn vào localStorage cho lần sau
-        localStorage.setItem("gemini_api_keys", JSON.stringify(cloudKeys));
-        console.log(
-          `☁️ Đã đồng bộ ${API_KEYS.length} Key từ tài khoản của bạn.`
-        );
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.apiKeys) {
+        API_KEYS = data.apiKeys;
+        localStorage.setItem("gemini_api_keys", JSON.stringify(API_KEYS));
       }
+      if (data.groqKeys) {
+        GROQ_KEYS = data.groqKeys;
+        localStorage.setItem("groq_api_keys", JSON.stringify(GROQ_KEYS));
+      }
+      if (data.aiProvider) {
+        AI_PROVIDER = data.aiProvider;
+      }
+      updateAIUI();
+      console.log("☁️ Đã đồng bộ cấu hình AI từ Cloud.");
     }
   } catch (e) {
     console.error("Lỗi đồng bộ Key:", e);
@@ -75,58 +107,58 @@ async function syncKeysFromCloud(user) {
 
 // 3. Hàm tải Key từ Local (Chạy khi mới mở web)
 function loadKeysFromLocal() {
-  const stored = localStorage.getItem("gemini_api_keys");
-  if (stored) {
-    try {
-      API_KEYS = JSON.parse(stored);
-      console.log(`📂 Đã tải ${API_KEYS.length} Key từ máy.`);
-    } catch (e) {}
+  const gStored = localStorage.getItem("gemini_api_keys");
+  if (gStored) {
+    try { API_KEYS = JSON.parse(gStored); } catch (e) { }
+  }
+  const grStored = localStorage.getItem("groq_api_keys");
+  if (grStored) {
+    try { GROQ_KEYS = JSON.parse(grStored); } catch (e) { }
   }
 }
 
-// 4. Popup nhập Key
-function promptForKeys() {
-  const currentKeysStr = API_KEYS.join("\n");
-  const user = auth.currentUser;
-  let msg = "🛠️ CẤU HÌNH API KEY (Multi-Device)\n\n";
-
-  if (user) {
-    msg += `👤 Đang đăng nhập: ${user.displayName}\n(Key bạn nhập sẽ được lưu vào tài khoản này)\n\n`;
-  } else {
-    msg += `⚠️ Bạn CHƯA đăng nhập.\nKey chỉ được lưu trên máy này thôi.\nHãy đăng nhập để đồng bộ sang điện thoại!\n\n`;
+// 4. Cấu hình AI
+// 4. Cấu hình AI
+window.promptForKeys = async function () {
+  // Quản lý Gemini Keys
+  const gInput = await cloudAlert({
+    type: 'prompt',
+    title: 'Cấu hình Gemini (Google)',
+    message: 'Nhập danh sách API Key Gemini (Mỗi key một dòng):',
+    defaultValue: API_KEYS.join("\n"),
+    icon: '💎'
+  });
+  if (gInput !== null) {
+    const keys = gInput.split(/[\n,]+/).map(k => k.trim()).filter(k => k);
+    saveKeysToStorage(keys, "gemini");
   }
 
-  msg += "Dán danh sách Key vào đây (Mỗi key một dòng):";
-
-  const input = prompt(msg, currentKeysStr);
-
-  if (input !== null) {
-    // Tách chuỗi thành mảng (chấp nhận xuống dòng hoặc dấu phẩy)
-    const newKeys = input
-      .split(/[\n,]+/)
-      .map((k) => k.trim())
-      .filter((k) => k);
-    saveKeysToStorage(newKeys);
+  // Quản lý Groq Keys
+  const grInput = await cloudAlert({
+    type: 'prompt',
+    title: 'Cấu hình Groq',
+    message: 'Nhập danh sách API Key Groq (Mỗi key một dòng):',
+    defaultValue: GROQ_KEYS.join("\n"),
+    icon: '⚡'
+  });
+  if (grInput !== null) {
+    const keys = grInput.split(/[\n,]+/).map(k => k.trim()).filter(k => k);
+    saveKeysToStorage(keys, "groq");
   }
 }
 
-function getCurrentKey() {
-  if (!API_KEYS || API_KEYS.length === 0) {
-    // Nếu chưa có key thì chưa làm gì cả, đợi hàm gọi xử lý
-    return null;
-  }
-  return API_KEYS[currentKeyIndex];
-}
-
-function rotateKey() {
-  if (API_KEYS.length > 0) {
+// Hàm nhảy key tự động
+function rotateKey(provider) {
+  if (provider === "gemini" && API_KEYS.length > 0) {
     currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-    console.log(`⚠️ Đổi sang Key số ${currentKeyIndex + 1}`);
+  } else if (provider === "groq" && GROQ_KEYS.length > 0) {
+    currentGroqKeyIndex = (currentGroqKeyIndex + 1) % GROQ_KEYS.length;
   }
 }
 
 // Khởi động: Tải từ local trước cho nhanh
 loadKeysFromLocal();
+updateAIUI();
 
 // ========================
 // BIẾN TOÀN CỤC
@@ -415,9 +447,20 @@ function shuffleArray(arr) {
 // LOGIC ĐỀ THI
 // ========================
 
+// Hàm chuẩn hóa chuỗi để so sánh chính xác (xóa khoảng trắng, chuẩn hóa ngoặc kép)
+// Hàm chuẩn hóa chuỗi để so sánh chính xác (Xóa ngoặc, xóa chấm cuối, xóa khoảng trắng)
+function normalizeText(str) {
+  if (!str) return "";
+  return str.toString()
+    .trim()
+    .replace(/[“”"‘’']/g, '') // Xóa hết mọi loại dấu ngoặc để so sánh nội dung thuần
+    .replace(/\.$/, '')       // Xóa dấu chấm ở cuối câu nếu có
+    .replace(/\s+/g, " ");    // Chuẩn hóa khoảng trắng
+}
+
 async function handleDataLoaded(data, fileName) {
   if (!Array.isArray(data) || data.length === 0) {
-    alert("File không hợp lệ hoặc không có câu hỏi.");
+    cloudAlert({ title: "Lỗi File", message: "File không hợp lệ hoặc không có câu hỏi.", icon: "❌" });
     return;
   }
   pendingData = { data: data, name: fileName };
@@ -434,9 +477,9 @@ async function handleDataLoaded(data, fileName) {
 }
 
 // Expose functions to window (vì dùng type=module)
-window.startExamNow = function () {
+window.startExamNow = async function () {
   if (!pendingData) {
-    alert("Vui lòng chọn file đề trước!");
+    cloudAlert({ title: "Thông báo", message: "Vui lòng chọn file đề trước!", icon: "ℹ️" });
     return;
   }
   isReviewMode = false;
@@ -477,6 +520,10 @@ window.loadFileFromLocal = function () {
   const fileInput = document.getElementById("fileInput");
   const file = fileInput.files[0];
   if (!file) return;
+
+  // Lấy lại focus ngay lập tức
+  window.focus();
+
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
@@ -484,207 +531,723 @@ window.loadFileFromLocal = function () {
       const name = file.name.replace(/\.json$/i, "");
       handleDataLoaded(data, name);
     } catch (err) {
-      alert("Lỗi đọc JSON.");
+      cloudAlert({ title: "Lỗi", message: "Lỗi đọc JSON.", icon: "❌" });
     }
   };
   reader.readAsText(file);
+  fileInput.value = "";
 };
 
-function loadJsonFromDriveFileId(fileId, fileName) {
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${API_KEY}`;
+// ==========================================
+// CLOUD EXPLORER — QUẢN LÝ THƯ MỤC VÀ ĐỀ THI
+// ==========================================
+
+let currentFolderId = null;
+let cloudPath = [{ id: null, name: 'Kho Đề' }];
+
+// Render Breadcrumb
+function renderBreadcrumb() {
+  const bcEl = document.getElementById("cloudBreadcrumb");
+  if (!bcEl) return;
+  let html = "";
+  cloudPath.forEach((item, index) => {
+    if (index > 0) html += `<span class="bc-separator">/</span>`;
+    html += `<span class="bc-item" onclick="window.navigateToFolder('${item.id}', ${index})">
+      ${index === 0 ? '🏠 ' : ''}${item.name}
+    </span>`;
+  });
+  bcEl.innerHTML = html;
+}
+
+// Chuyển đến thư mục
+window.navigateToFolder = function (folderId, pathIndex = -1) {
+  currentFolderId = folderId === "null" ? null : folderId;
+  if (pathIndex >= 0) {
+    cloudPath = cloudPath.slice(0, pathIndex + 1);
+  }
+  renderBreadcrumb();
+  loadCloudDirectory();
+};
+
+// ==========================================
+// CUSTOM UI UTILS (CLOUD ALERT)
+// ==========================================
+window.cloudAlert = function ({ type = 'alert', title = 'Thông báo', message = '', icon = 'ℹ️', defaultValue = '', confirmText = 'Đồng ý', cancelText = 'Hủy' }) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("cloudAlertOverlay");
+    document.getElementById("cloudAlertTitle").textContent = title;
+    document.getElementById("cloudAlertMessage").textContent = message;
+
+    const iconEl = document.getElementById("cloudAlertIcon");
+    iconEl.textContent = type === 'loading' ? '' : icon;
+    if (type === 'loading') iconEl.classList.add('loading');
+    else iconEl.classList.remove('loading');
+
+    const inputWrapper = document.getElementById("cloudAlertInputWrapper");
+    const inputEl = document.getElementById("cloudAlertInput");
+    const btnCancel = document.getElementById("btnCloudAlertCancel");
+    const btnConfirm = document.getElementById("btnCloudAlertConfirm");
+    const btnCloseTop = document.getElementById("btnCloseCloudAlert");
+
+    btnConfirm.textContent = confirmText;
+    btnCancel.textContent = cancelText;
+
+    if (type === 'prompt') {
+      inputWrapper.style.display = "block";
+      inputEl.value = defaultValue;
+      setTimeout(() => inputEl.focus(), 300);
+    } else {
+      inputWrapper.style.display = "none";
+    }
+
+    if (type === 'alert' || type === 'loading') {
+      btnCancel.style.display = "none";
+      btnCloseTop.style.display = type === 'loading' ? "none" : "flex";
+    } else {
+      btnCancel.style.display = "block";
+      btnCloseTop.style.display = "flex";
+    }
+
+    if (type === 'loading') {
+      btnConfirm.style.display = "none";
+    } else {
+      btnConfirm.style.display = "block";
+    }
+
+    overlay.style.display = "flex";
+
+    const close = (result) => {
+      if (type !== 'loading') overlay.style.display = "none";
+      resolve(result);
+    };
+
+    btnCancel.onclick = () => {
+      if (type === 'confirm') close(false);
+      else close(null);
+    };
+    btnCloseTop.onclick = () => close(null);
+    btnConfirm.onclick = () => {
+      if (type === 'prompt') close(inputEl.value);
+      else close(true);
+    };
+
+    if (type === 'prompt') {
+      inputEl.onkeyup = (e) => {
+        if (e.key === 'Enter') close(inputEl.value);
+      }
+    }
+  });
+};
+
+window.closeCloudAlert = function () {
+  document.getElementById("cloudAlertOverlay").style.display = "none";
+};
+
+// ==========================================
+// FOLDER & FILE LOGIC — DRAG & DROP
+// ==========================================
+
+window.handleItemDragStart = function (e, id, type) {
+  e.dataTransfer.setData("itemId", id);
+  e.dataTransfer.setData("itemType", type);
+  e.dataTransfer.effectAllowed = "move";
+
+  // Hiệu ứng mờ cho item đang bị kéo
+  e.target.style.opacity = "0.5";
+  e.target.classList.add("dragging");
+};
+
+window.handleItemDragEnd = function (e) {
+  e.target.style.opacity = "1";
+  e.target.classList.remove("dragging");
+};
+
+window.handleItemDragOver = function (e, el) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  el.classList.add("drag-target");
+};
+
+window.handleItemDragLeave = function (e, el) {
+  el.classList.remove("drag-target");
+};
+
+window.handleItemDrop = async function (e, targetFolderId) {
+  e.preventDefault();
+  const el = e.currentTarget;
+  el.classList.remove("drag-target");
+
+  const itemId = e.dataTransfer.getData("itemId");
+  const itemType = e.dataTransfer.getData("itemType");
+
+  if (!itemId || !targetFolderId || itemId === targetFolderId) return;
+
+  const user = auth.currentUser;
+  if (!user) return;
+
+  try {
+    if (itemType === 'file') {
+      await db.collection("users").doc(user.uid).collection("examFiles").doc(itemId).update({
+        folderId: targetFolderId
+      });
+    } else if (itemType === 'folder') {
+      // Chặn việc kéo folder vào chính nó hoặc con của nó (để đơn giản, hiện tại chỉ chặn kéo vào chính nó)
+      await db.collection("users").doc(user.uid).collection("folders").doc(itemId).update({
+        parentId: targetFolderId
+      });
+    }
+    loadCloudDirectory();
+  } catch (err) {
+    console.error("Lỗi di chuyển:", err);
+    cloudAlert({ title: "Lỗi", message: "Không thể di chuyển: " + err.message, icon: "❌" });
+  }
+};
+
+// --- LOGIC MODAL DI CHUYỂN (MOVE TO) ---
+let movingItemId = null;
+let movingItemType = null;
+let movingItemSourceParentId = null; // Thư mục gốc ban đầu
+let moveCurrentFolderId = null;
+let movePath = [{ id: null, name: 'Gốc' }];
+
+window.openMoveModal = function (id, type, name, sourceParentId) {
+  movingItemId = id;
+  movingItemType = type;
+  // Chuẩn hóa sourceParentId (vì Firestore có thể trả về null hoặc chuỗi "null")
+  movingItemSourceParentId = (sourceParentId === "null" || !sourceParentId) ? null : sourceParentId;
+  moveCurrentFolderId = null;
+  movePath = [{ id: null, name: 'Kho Đề' }];
+
+  document.getElementById("moveModal").style.display = "flex";
+  window.renderMoveDirectory();
+};
+
+window.navigateMoveFolder = function (id, name, pathIndex = -1) {
+  moveCurrentFolderId = id === "null" ? null : id;
+  if (pathIndex >= 0) {
+    movePath = movePath.slice(0, pathIndex + 1);
+  } else {
+    movePath.push({ id, name });
+  }
+  window.renderMoveDirectory();
+};
+
+window.renderMoveDirectory = async function () {
+  const gridEl = document.getElementById("moveGridArea");
+  const bcEl = document.getElementById("moveBreadcrumb");
+  const targetLabel = document.getElementById("moveTargetLabel");
+  const user = auth.currentUser;
+
+  if (!user) return;
+
+  // Render Breadcrumb
+  let bcHtml = "";
+  movePath.forEach((item, index) => {
+    if (index > 0) bcHtml += `<span class="bc-separator">/</span>`;
+    bcHtml += `<span class="bc-item" onclick="window.navigateMoveFolder('${item.id}', '${item.name}', ${index})">${item.name}</span>`;
+  });
+  bcEl.innerHTML = bcHtml;
+
+  targetLabel.innerHTML = `📍 Đang chọn: <b>${movePath[movePath.length - 1].name}</b>`;
+
+  gridEl.innerHTML = `<div class="drive-skeleton-grid" style="padding:15px">
+                        <div class="cloud-skeleton"></div>
+                        <div class="cloud-skeleton"></div>
+                      </div>`;
+
+  try {
+    const snap = await db.collection("users").doc(user.uid).collection("folders")
+      .where("parentId", "==", moveCurrentFolderId)
+      .get();
+
+    let html = "";
+    if (moveCurrentFolderId !== null) {
+      // Nút quay lại
+      html += `
+        <div class="cloud-item type-folder" onclick="window.navigateMoveFolder('${movePath[movePath.length - 2].id}', '', ${movePath.length - 2})">
+          <div class="icon-box">⬅️</div>
+          <div class="cloud-name">Quay lại</div>
+        </div>`;
+    }
+
+    snap.forEach(doc => {
+      const d = doc.data();
+      // Không cho phép di chuyển folder vào chính nó
+      if (movingItemType === 'folder' && doc.id === movingItemId) return;
+
+      html += `
+        <div class="cloud-item type-folder" onclick="window.navigateMoveFolder('${doc.id}', '${d.name.replace(/'/g, "\\'")}')">
+          <div class="icon-box">📁</div>
+          <div class="cloud-name">${d.name}</div>
+        </div>`;
+    });
+
+    gridEl.innerHTML = html || "<div style='text-align:center; padding:20px; color:var(--text-muted, #94a3b8);'>Không có thư mục con</div>";
+
+    const btnConfirm = document.getElementById("btnConfirmMove");
+
+    // KIỂM TRA LOGIC: Nếu đích đến trùng với nguồn -> Vô hiệu hóa nút
+    const isSameDestination = (moveCurrentFolderId === movingItemSourceParentId);
+
+    if (isSameDestination) {
+      btnConfirm.disabled = true;
+      btnConfirm.textContent = "Đã ở đây";
+      btnConfirm.style.background = "";
+      btnConfirm.style.cursor = "";
+    } else {
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = "Xác nhận chuyển";
+      btnConfirm.style.background = "";
+      btnConfirm.style.cursor = "";
+    }
+
+    btnConfirm.onclick = async () => {
+      cloudAlert({ type: 'loading', title: 'Đang di chuyển...', message: 'Vui lòng chờ' });
+      try {
+        const collection = movingItemType === 'file' ? 'examFiles' : 'folders';
+        const field = movingItemType === 'file' ? 'folderId' : 'parentId';
+
+        await db.collection("users").doc(user.uid).collection(collection).doc(movingItemId).update({
+          [field]: moveCurrentFolderId
+        });
+
+        document.getElementById("moveModal").style.display = "none";
+        window.closeCloudAlert();
+        loadCloudDirectory();
+      } catch (err) {
+        window.closeCloudAlert();
+        cloudAlert({ title: "Lỗi", message: err.message, icon: "❌" });
+      }
+    };
+  } catch (err) {
+    gridEl.innerHTML = "<div style='color:red'>Lỗi tải thư mục</div>";
+  }
+};
+
+// --- QUẢN LÝ DROPDOWN MENU ---
+window.showGlobalCloudMenu = function (e, id, type, name) {
+  e.stopPropagation();
+
+  const dropdown = document.getElementById("globalCloudDropdown");
+  const overlay = document.getElementById("globalCloudDropdownOverlay");
+
+  // Set content based on type
+  if (type === 'folder') {
+    dropdown.innerHTML = `
+      <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.enterFolder('${id}', '${name}')">
+        <span class="dropdown-icon">📂</span> Mở thư mục
+      </div>
+      <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.openMoveModal('${id}', 'folder', '${name}', '${currentFolderId}')">
+        <span class="dropdown-icon">🚚</span> Di chuyển
+      </div>
+      <div class="dropdown-item delete" onclick="window.closeGlobalDropdown(); window.deleteFolder('${id}', '${name}')">
+        <span class="dropdown-icon">🗑️</span> Xóa thư mục
+      </div>
+    `;
+  } else {
+    dropdown.innerHTML = `
+      <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.selectDriveFile('${id}', '${name}')">
+        <span class="dropdown-icon">📖</span> Mở đề thi
+      </div>
+      <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.openMoveModal('${id}', 'file', '${name}', '${currentFolderId}')">
+        <span class="dropdown-icon">🚚</span> Di chuyển
+      </div>
+      <div class="dropdown-item delete" onclick="window.closeGlobalDropdown(); window.deleteDriveFile('${id}', '${name}')">
+        <span class="dropdown-icon">🗑️</span> Xóa đề thi
+      </div>
+    `;
+  }
+
+  // Show elements first so we get accurate dimensions if needed
+  dropdown.style.display = "flex";
+  dropdown.classList.add('active');
+  overlay.style.display = "block";
+
+  // Position the dropdown exactly where the mouse clicked
+  const clickX = e.clientX;
+  const clickY = e.clientY;
+  const dropdownWidth = 160;
+  const dropdownHeight = 130; // Approx height for 3 items
+
+  // By default, open below and slightly left of the cursor
+  let leftPos = clickX - dropdownWidth + 20;
+  if (leftPos < 10) leftPos = 10;
+
+  let topPos = clickY + 15;
+  // If too low, flip it above the cursor
+  if (topPos + dropdownHeight > window.innerHeight) {
+    topPos = clickY - dropdownHeight - 15;
+  }
+
+  // Set position directly and explicitly remove right/bottom
+  dropdown.style.top = topPos + "px";
+  dropdown.style.left = leftPos + "px";
+  dropdown.style.right = "auto";
+  dropdown.style.bottom = "auto";
+  dropdown.style.zIndex = "99999";
+  overlay.style.zIndex = "99998";
+};
+
+window.closeGlobalDropdown = function () {
+  const dropdown = document.getElementById("globalCloudDropdown");
+  const overlay = document.getElementById("globalCloudDropdownOverlay");
+  dropdown.style.display = "none";
+  dropdown.classList.remove('active');
+  overlay.style.display = "none";
+};
+
+// Đóng menu khi click ra ngoài
+document.addEventListener('click', () => {
+  window.closeGlobalDropdown();
+});
+
+// ==========================================
+// FOLDER & FILE LOGIC — HELPERS
+// ==========================================
+window.setCloudLoading = function (show, message = "Đang xử lý...") {
+  const loadingEl = document.getElementById("driveLoading");
+  if (!loadingEl) return;
+
+  if (show) {
+    loadingEl.style.display = "block";
+  } else {
+    loadingEl.style.display = "none";
+  }
+};
+
+// ==========================================
+// FOLDER & FILE LOGIC — DRAG & DROP
+// ==========================================
+
+// Tạo thư mục mới
+window.promptCreateFolder = async function () {
+  const user = auth.currentUser;
+  if (!user) return cloudAlert({ title: "Lỗi", message: "Vui lòng đăng nhập!", icon: "❌" });
+
+  const name = await cloudAlert({
+    type: 'prompt',
+    title: 'Tạo thư mục mới',
+    message: 'Nhập tên thư mục:',
+    icon: '📁',
+    confirmText: 'Tạo'
+  });
+
+  if (!name || !name.trim()) return;
+
+  window.setCloudLoading(true, "Đang tạo thư mục...");
+  try {
+    await db.collection("users").doc(user.uid).collection("folders").add({
+      name: name.trim(),
+      parentId: currentFolderId,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    window.setCloudLoading(false);
+    loadCloudDirectory();
+  } catch (e) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: "Lỗi tạo thư mục", message: e.message, icon: "❌" });
+  }
+};
+
+// Lưu file JSON lên Firestore của user
+async function uploadJsonToCloud(file, displayName) {
+  window.setCloudLoading(true, "Đang tải file lên...");
+
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Bạn chưa đăng nhập!");
+
+    // Đọc và Validate JSON
+    const text = await file.text();
+    JSON.parse(text); // Sẽ throw lỗi nếu file không phải JSON hợp lệ
+
+    // Kiểm tra kích thước (Firestore giới hạn ~1MB/document, file JSON thường < 100KB)
+    if (text.length > 900000) {
+      throw new Error("File quá lớn! (Tối đa ~900KB)");
+    }
+
+    const statusEl = document.getElementById("driveUploadStatus");
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.innerHTML = `<div class="drive-spinner-small"></div> Đang lưu lên Cloud...`;
+    }
+
+    // Lưu thẳng vào Firestore
+    await db
+      .collection("users")
+      .doc(user.uid)
+      .collection("examFiles")
+      .add({
+        displayName: displayName || file.name.replace(/\.json$/i, ""),
+        fileName: file.name,
+        content: text, // Lưu nội dung JSON dưới dạng chuỗi
+        folderId: currentFolderId,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Thành công', message: `Tải lên thành công: ${displayName}`, icon: '✅' });
+
+    // Tự ẩn thông báo sau 2s
+    setTimeout(() => {
+      window.closeCloudAlert();
+    }, 2000);
+
+    // Refresh danh sách
+    loadCloudDirectory();
+  } catch (e) {
+    console.error("Upload error:", e);
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Lỗi tải lên', message: e.message, icon: '❌' });
+  }
+}
+
+// Tải nội dung file JSON từ Firestore
+async function loadCloudFile(docId, displayName) {
   const btn = document.getElementById("btnSelectDrive");
   const oldText = btn.textContent;
   btn.textContent = "⏳ Đang tải...";
   btn.disabled = true;
-  fetch(url)
-    .then((r) => r.json())
-    .then((json) => {
-      handleDataLoaded(json, fileName);
-    })
-    .catch(() => {
-      alert("Không tải được file từ Drive.");
-    })
-    .finally(() => {
-      btn.textContent = oldText;
-      btn.disabled = false;
-    });
+
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Chưa đăng nhập");
+
+    const docRef = db.collection("users").doc(user.uid).collection("examFiles").doc(docId);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) throw new Error("Không tìm thấy đề thi này!");
+
+    const data = docSnap.data();
+    const json = JSON.parse(data.content);
+
+    document.getElementById("driveModal").style.display = "none";
+    handleDataLoaded(json, displayName);
+  } catch (e) {
+    cloudAlert({ title: "Lỗi", message: "Không mở được file: " + e.message, icon: "❌" });
+  } finally {
+    btn.textContent = oldText;
+    btn.disabled = false;
+  }
 }
 
-// --- LOGIC DRIVE MỚI (POPUP MODAL) ---
-// ==========================================
-// LOGIC DRIVE EXPLORER (HỖ TRỢ FOLDER)
-// ==========================================
+// Tải nội dung file JSON từ Drive dùng access token
+async function loadDriveFileWithToken(driveFileId, displayName) {
+  const btn = document.getElementById("btnSelectDrive");
+  const oldText = btn.textContent;
+  btn.textContent = "⏳ Đang tải...";
+  btn.disabled = true;
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${driveAccessToken}` } }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    document.getElementById("driveModal").style.display = "none";
+    handleDataLoaded(json, displayName);
+  } catch (e) {
+    cloudAlert({ title: "Lỗi", message: "Không tải được file từ Drive: " + e.message, icon: "❌" });
+  } finally {
+    btn.textContent = oldText;
+    btn.disabled = false;
+  }
+}
 
-let driveHistoryStack = []; // Lưu lịch sử duyệt thư mục để Back
-let currentFolderId = ""; // ID thư mục hiện tại
+// Tải danh sách Folders và Files trong thư mục hiện tại
+async function loadCloudDirectory() {
+  const gridEl = document.getElementById("cloudGridArea");
+  const loadingEl = document.getElementById("driveLoading");
+  const user = auth.currentUser;
 
-// 1. Khởi động Modal Drive
+  if (!user) {
+    gridEl.innerHTML = `<div class="cloud-empty">⚠️ Vui lòng <b>đăng nhập</b> để xem kho đề của bạn.</div>`;
+    return;
+  }
+
+  loadingEl.style.display = "block";
+  gridEl.innerHTML = "";
+
+  try {
+    // 1. Lấy Folders
+    let foldersQuery = db.collection("users").doc(user.uid).collection("folders");
+    if (currentFolderId === null) foldersQuery = foldersQuery.where("parentId", "==", null);
+    else foldersQuery = foldersQuery.where("parentId", "==", currentFolderId);
+
+    const foldersSnap = await foldersQuery.get();
+
+    // 2. Lấy Files (Bỏ orderBy để tránh lỗi Firebase requires an index)
+    let filesQuery = db.collection("users").doc(user.uid).collection("examFiles");
+    if (currentFolderId === null) filesQuery = filesQuery.where("folderId", "==", null);
+    else filesQuery = filesQuery.where("folderId", "==", currentFolderId);
+
+    const filesSnap = await filesQuery.get();
+
+    loadingEl.style.display = "none";
+
+    if (foldersSnap.empty && filesSnap.empty) {
+      gridEl.innerHTML = `
+        <div class="cloud-empty">
+          <span style="font-size:64px; color:#cbd5e1; display:block; margin-bottom:10px;">📂</span>
+          <p>Thư mục trống. Hãy <b>Tạo thư mục</b> hoặc <b>Tải lên</b> đề thi mới.</p>
+        </div>`;
+      return;
+    }
+
+    // Sắp xếp Folders theo tên (A-Z)
+    const foldersArray = [];
+    foldersSnap.forEach(doc => foldersArray.push({ id: doc.id, ...doc.data() }));
+    foldersArray.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+    // Sắp xếp Files theo thời gian mới nhất (desc)
+    const filesArray = [];
+    filesSnap.forEach(doc => filesArray.push({ id: doc.id, ...doc.data() }));
+    filesArray.sort((a, b) => {
+      const tA = a.createdAt ? a.createdAt.toMillis() : 0;
+      const tB = b.createdAt ? b.createdAt.toMillis() : 0;
+      return tB - tA;
+    });
+
+    let html = "";
+
+    // Render Folders
+    foldersArray.forEach((d) => {
+      const dateStr = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString("vi-VN") : "";
+      html += `
+        <div class="cloud-item type-folder" 
+             onclick="window.enterFolder('${d.id}', '${d.name.replace(/'/g, "\\'")}')"
+             draggable="true"
+             ondragstart="window.handleItemDragStart(event, '${d.id}', 'folder')"
+             ondragend="window.handleItemDragEnd(event)"
+             ondragover="window.handleItemDragOver(event, this)"
+             ondragleave="window.handleItemDragLeave(event, this)"
+             ondrop="window.handleItemDrop(event, '${d.id}')">
+          <div class="icon-box">📁</div>
+          <div class="cloud-name">${d.name}</div>
+          
+          <div class="cloud-item-menu" onclick="event.stopPropagation()">
+            <button class="btn-menu-dots" onclick="window.showGlobalCloudMenu(event, '${d.id}', 'folder', '${d.name.replace(/'/g, "\\'")}')">⋮</button>
+          </div>
+        </div>`;
+    });
+
+    // Render Files
+    filesArray.forEach((d) => {
+      const dateStr = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString("vi-VN") : "";
+      html += `
+        <div class="cloud-item" 
+             onclick="window.selectDriveFile('${d.id}', '${d.displayName.replace(/'/g, "\\'")}')"
+             draggable="true" 
+             ondragstart="window.handleItemDragStart(event, '${d.id}', 'file')"
+             ondragend="window.handleItemDragEnd(event)">
+          <div class="icon-box">📋</div>
+          <div class="cloud-name" title="${d.displayName}">${d.displayName}</div>
+          
+          <div class="cloud-item-menu" onclick="event.stopPropagation()">
+            <button class="btn-menu-dots" onclick="window.showGlobalCloudMenu(event, '${d.id}', 'file', '${d.displayName.replace(/'/g, "\\'")}')">⋮</button>
+          </div>
+        </div>`;
+    });
+
+    gridEl.innerHTML = html;
+  } catch (e) {
+    loadingEl.style.display = "none";
+    gridEl.innerHTML = `<div class="cloud-empty" style="color:#dc2626">❌ Lỗi tải dữ liệu: ${e.message}</div>`;
+  }
+}
+
+// Mở một thư mục (Click vào thư mục)
+window.enterFolder = function (folderId, folderName) {
+  currentFolderId = folderId;
+  cloudPath.push({ id: folderId, name: folderName });
+  renderBreadcrumb();
+  loadCloudDirectory();
+};
+
+// Đệ quy xóa Folder và tất cả nội dung bên trong
+async function recursiveDeleteFolder(userId, folderId) {
+  // 1. Tìm và xóa các folder con
+  const subFolders = await db.collection("users").doc(userId).collection("folders").where("parentId", "==", folderId).get();
+  for (const doc of subFolders.docs) {
+    await recursiveDeleteFolder(userId, doc.id);
+  }
+
+  // 2. Tìm và xóa các files trong folder này
+  const filesSnap = await db.collection("users").doc(userId).collection("examFiles").where("folderId", "==", folderId).get();
+  for (const doc of filesSnap.docs) {
+    await doc.ref.delete();
+  }
+
+  // 3. Xóa chính folder này
+  await db.collection("users").doc(userId).collection("folders").doc(folderId).delete();
+}
+
+// Xóa thư mục
+window.deleteFolder = async function (folderId, folderName) {
+  const confirmObj = await cloudAlert({
+    type: 'confirm',
+    title: 'Xóa thư mục',
+    message: `Bạn có chắc muốn xóa thư mục "${folderName}"?\nToàn bộ thư mục con và đề thi bên trong cũng sẽ bị xóa!`,
+    icon: '🗑️'
+  });
+  if (!confirmObj) return;
+
+  const user = auth.currentUser;
+  window.setCloudLoading(true, "Đang xóa thư mục...");
+
+  try {
+    await recursiveDeleteFolder(user.uid, folderId);
+    window.setCloudLoading(false);
+    loadCloudDirectory();
+  } catch (e) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Lỗi xóa thư mục', message: e.message, icon: '❌' });
+  }
+};
+
+// Chọn file để thi
+window.selectDriveFile = function (docId, displayName) {
+  loadCloudFile(docId, displayName);
+};
+
+// Xóa file khỏi Firestore
+window.deleteDriveFile = async function (firestoreDocId, displayName) {
+  const confirmObj = await cloudAlert({
+    type: 'confirm',
+    title: 'Xóa đề thi',
+    message: `Xóa đề "${displayName}" khỏi kho của bạn?`,
+    icon: '🗑️'
+  });
+  if (!confirmObj) return;
+
+  const user = auth.currentUser;
+  window.setCloudLoading(true, "Đang xóa đề thi...");
+  try {
+    await db.collection("users").doc(user.uid).collection("examFiles").doc(firestoreDocId).delete();
+    window.setCloudLoading(false);
+    loadCloudDirectory();
+  } catch (e) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Lỗi xóa đề', message: e.message, icon: '❌' });
+  }
+};
+
+// Mở modal
 window.chooseExamFromDriveFolder = function () {
   const modal = document.getElementById("driveModal");
   modal.style.display = "flex";
 
-  // Reset trạng thái
-  driveHistoryStack = [];
-
-  // Lấy ID Root folder
-  let rootId = DRIVE_FOLDER_ID;
-  if (!rootId) {
-    // ID thư mục gốc mặc định (như code cũ của bạn)
-    rootId = "1yIfmYSkZHBpoJZqBtNfZKWMnxmg46uDX";
-  }
-
-  // Bắt đầu tải thư mục gốc
-  loadDriveFolder(rootId, "Trang chủ");
+  // Reset path về root khi mở modal
+  currentFolderId = null;
+  cloudPath = [{ id: null, name: 'Kho Đề' }];
+  renderBreadcrumb();
+  loadCloudDirectory();
 };
 
-// HÀM DRIVE NÂNG CẤP (CACHE + SKELETON)
-function loadDriveFolder(folderId, folderName) {
-  const listEl = document.getElementById("driveListArea");
-  const loadingEl = document.getElementById("driveLoading"); // Ẩn spinner cũ đi
-  const backBtn = document.getElementById("btnDriveBack");
-  const breadcrumb = document.getElementById("driveBreadcrumb");
-
-  loadingEl.style.display = "none"; // Ta dùng Skeleton thay vì spinner xoay xoay cũ
-
-  // Cập nhật Breadcrumb & Nút Back
-  currentFolderId = folderId;
-  breadcrumb.textContent =
-    driveHistoryStack.map((f) => f.name).join(" > ") +
-    (driveHistoryStack.length ? " > " : "") +
-    folderName;
-  backBtn.disabled = driveHistoryStack.length === 0;
-
-  // 1. KIỂM TRA CACHE: Nếu đã có dữ liệu trong RAM thì hiện ngay lập tức!
-  if (driveCache[folderId]) {
-    renderDriveGrid(driveCache[folderId]);
-    return;
-  }
-
-  // 2. HIỂN THỊ SKELETON (Hiệu ứng đang tải giả lập)
-  let skeletonHtml = "";
-  for (let i = 0; i < 8; i++) {
-    skeletonHtml += `<div class="d-item skeleton-item"><div class="skeleton" style="width:50px; height:50px; border-radius:50%; margin-bottom:10px;"></div><div class="skeleton" style="width:80%; height:10px;"></div></div>`;
-  }
-  listEl.innerHTML = skeletonHtml;
-
-  // 3. GỌI API (Như cũ)
-  const q = `'${folderId}' in parents and (mimeType='application/json' or mimeType='application/vnd.google-apps.folder') and trashed=false`;
-  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
-    q
-  )}&fields=files(id,name,mimeType)&key=${API_KEY}`;
-
-  fetch(url)
-    .then((r) => r.json())
-    .then((data) => {
-      if (!data.files || !data.files.length) {
-        listEl.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; color:#94a3b8;">📂 Thư mục trống</div>`;
-        return;
-      }
-
-      // Sắp xếp
-      const sortedFiles = data.files.sort((a, b) => {
-        const isFolderA = a.mimeType.includes("folder");
-        const isFolderB = b.mimeType.includes("folder");
-        if (isFolderA && !isFolderB) return -1;
-        if (!isFolderA && isFolderB) return 1;
-        return a.name.localeCompare(b.name);
-      });
-
-      // LƯU VÀO CACHE
-      driveCache[folderId] = sortedFiles;
-
-      renderDriveGrid(sortedFiles);
-    })
-    .catch((err) => {
-      console.error(err);
-      listEl.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:#ef4444;">❌ Lỗi tải dữ liệu.</div>`;
-    });
+// Giữ lại hàm cũ để tránh lỗi reference (nếu còn sót trong index.html)
+function loadJsonFromDriveFileId(fileId, fileName) {
+  loadCloudFile(fileId, fileName);
 }
-
-// Thay thế hàm renderDriveGrid cũ bằng hàm này:
-
-function renderDriveGrid(files) {
-  const listEl = document.getElementById("driveListArea");
-
-  // ICON SVG (Nhúng trực tiếp để không lỗi ảnh)
-  const iconFolder = `
-    <svg width="100%" height="100%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M56 16H34.4L28.8 8H8C5.8 8 4 9.8 4 12V52C4 54.2 5.8 56 8 56H56C58.2 56 60 54.2 60 52V20C60 17.8 58.2 16 56 16Z" fill="#60A5FA"/>
-      <path d="M56 20H8V52H56V20Z" fill="#93C5FD"/>
-      <path d="M56 20H8V24H56V20Z" fill="#BFDBFE"/>
-    </svg>`;
-
-  const iconJson = `
-    <svg width="100%" height="100%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="10" y="4" width="44" height="56" rx="4" fill="white" stroke="#CBD5E1" stroke-width="2"/>
-      <path d="M42 4V16H54" stroke="#CBD5E1" stroke-width="2" stroke-linejoin="round"/>
-      <text x="32" y="38" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#F59E0B" text-anchor="middle">{ }</text>
-      <text x="32" y="52" font-family="Arial, sans-serif" font-size="9" fill="#94A3B8" text-anchor="middle">JSON</text>
-    </svg>`;
-
-  let html = "";
-
-  files.forEach((file) => {
-    const isFolder = file.mimeType.includes("folder");
-
-    if (isFolder) {
-      // FOLDER ITEM
-      html += `
-        <div class="d-item is-folder" onclick="window.onDriveFolderClick('${file.id}', '${file.name}')" title="${file.name}">
-            <div class="d-icon-box">${iconFolder}</div>
-            <div class="d-name">${file.name}</div>
-        </div>`;
-    } else {
-      // FILE ITEM
-      html += `
-        <div class="d-item is-file" onclick="window.onDriveFileClick('${file.id}', '${file.name}')" title="${file.name}">
-            <div class="d-icon-box">${iconJson}</div>
-            <div class="d-name">${file.name}</div>
-        </div>`;
-    }
-  });
-
-  listEl.innerHTML = html;
-}
-
-// 4. Sự kiện Click Folder (Đi sâu vào trong)
-window.onDriveFolderClick = function (id, name) {
-  // Đẩy folder hiện tại vào lịch sử để tí còn Back lại
-  // Lưu tên folder TRƯỚC khi chuyển (cái đang hiển thị trên breadcrumb cuối cùng)
-  const parentName = document
-    .getElementById("driveBreadcrumb")
-    .textContent.split(" > ")
-    .pop();
-  driveHistoryStack.push({ id: currentFolderId, name: parentName });
-
-  // Tải folder mới
-  loadDriveFolder(id, name);
-};
-
-// 5. Sự kiện Click File (Chọn đề thi)
-window.onDriveFileClick = function (id, name) {
-  document.getElementById("driveModal").style.display = "none";
-  loadJsonFromDriveFileId(id, name); // Gọi lại hàm cũ để tải đề
-};
-
-// 6. Sự kiện Nút Back
-document.getElementById("btnDriveBack").onclick = function () {
-  if (driveHistoryStack.length === 0) return;
-
-  const prev = driveHistoryStack.pop();
-  loadDriveFolder(prev.id, prev.name);
-};
-
-// 7. Sự kiện đóng Modal
-document.addEventListener("DOMContentLoaded", () => {
-  // ... code cũ ...
-
-  // Gán nút đóng cho Modal Drive mới
-  const closeBtn = document.getElementById("btnCloseDrive");
-  if (closeBtn)
-    closeBtn.onclick = () =>
-      (document.getElementById("driveModal").style.display = "none");
-});
 
 window.openQuestionNav = function () {
   document.getElementById("questionNavOverlay").classList.add("open");
@@ -708,7 +1271,9 @@ function generateQuiz() {
     card.dataset.index = index;
 
     let html = `
-      <div class="question-header"><span>CÂU ${index + 1}</span></div>
+      <div class="question-header">
+        <span>CÂU ${index + 1}</span>
+      </div>
       <div class="question-text">${q.question}</div>
       <div class="options">
     `;
@@ -716,7 +1281,7 @@ function generateQuiz() {
       const letter = letters[i] || "?";
       html += `
         <div class="option-wrapper">
-          <input type="radio" name="q${index}" value="${opt}" id="q${index}_opt${i}" class="option-input" style="display:none">
+          <input type="radio" name="q${index}" value="${opt.replace(/"/g, '&quot;')}" id="q${index}_opt${i}" class="option-input" style="display:none">
           <label for="q${index}_opt${i}" class="option-label">
             <span style="font-weight:700; min-width:25px; color:#3b82f6;">${letter}.</span>
             <span>${opt}</span>
@@ -725,15 +1290,20 @@ function generateQuiz() {
     });
     html += `</div>`;
 
-    // --- ĐOẠN SỬA ĐỔI Ở ĐÂY ---
-    // Nếu là chế độ ôn tập thì thêm giải thích (Chỉ dùng class, KHÔNG DÙNG STYLE INLINE)
-    if (isReviewMode && q.explain) {
-      // Bỏ style="background:..." đi để CSS xử lý
+    // Thêm explain container cho TẤT CẢ câu có field explain
+    // Ẩn mặc định, hiện sau khi chọn đáp án (review) hoặc sau khi nộp bài (thi thường)
+    if (q.explain) {
       html += `<div class="review-explain" id="explain-${index}" style="display:none;">
         💡 <b>Giải thích:</b> ${q.explain}
       </div>`;
     }
-    // ---------------------------
+
+    // Nút hỏi AI (ẩn mặc định, chỉ hiện sau khi nộp bài)
+    html += `
+      <div class="post-grade-actions" id="actions-${index}" style="display:none;">
+        <button class="btn-ask-ai" onclick="window.askAIForQuestion(${index})">✨ Hỏi AI Giải Thích</button>
+      </div>
+    `;
 
     card.innerHTML = html;
     quizDiv.appendChild(card);
@@ -896,9 +1466,9 @@ function grade(autoSubmit) {
     const card = document.querySelector(`.question-card[data-index="${i}"]`);
     const selected = document.querySelector(`input[name="q${i}"]:checked`);
     const navBtn = document.querySelector(`.qnav-item[data-index="${i}"]`);
-    const correctText = (q.answer || "").trim();
-    const userText = selected ? selected.value.trim() : "";
-    const isCorrect = userText === correctText;
+    const correctText = normalizeText(q.answer);
+    const userText = selected ? normalizeText(selected.value) : "";
+    const isCorrect = userText === correctText && userText !== "";
 
     // --- LƯU CÂU SAI VÀO BATCH ---
     if (!isCorrect && user && mistakeDocRef) {
@@ -918,9 +1488,10 @@ function grade(autoSubmit) {
     const opts = q.options || [];
     card.classList.remove("correct", "incorrect");
     card.querySelectorAll(".option-label").forEach((lbl, idx) => {
-      if ((opts[idx] || "").trim() === correctText)
+      const optText = normalizeText(opts[idx]);
+      if (optText === correctText && correctText !== "")
         lbl.classList.add("correct");
-      if (selected && opts[idx] === userText && !isCorrect)
+      if (selected && optText === userText && !isCorrect)
         lbl.classList.add("incorrect");
     });
     card.querySelectorAll("input").forEach((inp) => (inp.disabled = true));
@@ -932,7 +1503,38 @@ function grade(autoSubmit) {
       card.classList.add("incorrect");
       if (navBtn) navBtn.classList.add("nav-incorrect");
     }
-  });
+
+    // Hiện badge trạng thái (Chính xác / Sai / Chưa trả lời)
+    const badge = document.createElement("div");
+    badge.className = "q-status-badge";
+    if (!selected) {
+      badge.textContent = "Chưa trả lời";
+      badge.classList.add("q-status-unanswered");
+    } else if (isCorrect) {
+      badge.textContent = "Chính xác";
+      badge.classList.add("q-status-correct");
+    } else {
+      badge.textContent = "Sai";
+      badge.classList.add("q-status-incorrect");
+    }
+    card.appendChild(badge);
+
+    // Hiện khu vực hành động AI
+    const actionArea = document.getElementById(`actions-${i}`);
+    if (actionArea) actionArea.style.display = "flex";
+
+    // Hiện explain sau khi chấm bài
+    if (q.explain) {
+      let explainEl = document.getElementById(`explain-${i}`);
+      if (!explainEl) {
+        explainEl = document.createElement("div");
+        explainEl.className = "review-explain";
+        explainEl.innerHTML = `💡 <b>Giải thích:</b> ${q.explain}`;
+        card.appendChild(explainEl);
+      }
+      explainEl.style.display = "block";
+    }
+  }); // end questionsData.forEach
 
   // --- GỬI BATCH LÊN CLOUD ---
   if (hasMistakesToSave) {
@@ -962,8 +1564,27 @@ function grade(autoSubmit) {
   saveExamResult(score, total, percent, currentExamName);
 }
 
-window.resetExam = function () {
-  if (!confirm("Bạn muốn thoát bài này?")) return;
+window.resetExam = async function () {
+  if (examFinished) {
+    pendingData = null;
+    questionsData = [];
+    setHeaderMode("setup");
+    document.getElementById("quiz").innerHTML = "";
+    document.getElementById("result").textContent = "";
+    document.getElementById("btnGradeHeader").style.display = "none";
+    document.getElementById("btnGradeNav").style.display = "none";
+    updateFileStatus("", false);
+    return;
+  }
+
+  const confirmExit = await cloudAlert({
+    type: 'confirm',
+    title: 'Xác nhận',
+    message: 'Bạn muốn thoát bài này?',
+    icon: '❓'
+  });
+  if (!confirmExit) return;
+
   clearInterval(timerInterval);
   examFinished = false;
   questionsData = [];
@@ -1006,7 +1627,11 @@ auth.onAuthStateChanged((user) => {
   }
 });
 document.getElementById("btnLogin").onclick = () =>
-  auth.signInWithPopup(provider);
+  auth.signInWithPopup(provider).catch((e) => {
+    if (e.code !== "auth/popup-closed-by-user") {
+      console.error("Login error:", e);
+    }
+  });
 document.getElementById("btnLogout").onclick = () => auth.signOut();
 
 async function saveExamResult(score, total, percent, examName) {
@@ -1036,7 +1661,7 @@ async function saveExamResult(score, total, percent, examName) {
         details,
       });
     fetchHistoryData(user.uid);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 async function fetchHistoryData(uid) {
@@ -1050,7 +1675,7 @@ async function fetchHistoryData(uid) {
       .get();
     globalHistoryData = [];
     snap.forEach((d) => globalHistoryData.push({ id: d.id, ...d.data() }));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 // ========================
@@ -1119,35 +1744,47 @@ async function analyzeWithGemini(forceUpdate = false) {
   const reAnalyzeBtn = document.getElementById("btnReAnalyzeAI");
   const aiSelect = document.getElementById("aiHistorySelect");
 
-  // KIỂM TRA KEY: Nếu chưa có key thì bắt nhập
-  if (!API_KEYS || API_KEYS.length === 0) {
-    promptForKeys();
-    if (!API_KEYS || API_KEYS.length === 0) return; // Nhập xong vẫn rỗng thì thôi
+  // BƯỚC MỚI: Hỏi chọn Model nào
+  const useGroq = await cloudAlert({
+    type: 'confirm',
+    title: 'Chọn AI Phân Tích',
+    message: 'Bạn muốn dùng trí tuệ nhân tạo nào để phân tích bài thi này?',
+    confirmText: 'Groq (Siêu nhanh)',
+    cancelText: 'Gemini (Google)',
+    icon: '🤖'
+  });
+  AI_PROVIDER = useGroq ? "groq" : "gemini";
+  updateAIUI();
+
+  // Lấy tên môn học từ UI
+  const examNameElem = document.getElementById("examName");
+  const currentExamName = examNameElem ? examNameElem.textContent : "Đề thi";
+
+  const keys = AI_PROVIDER === "gemini" ? API_KEYS : GROQ_KEYS;
+  if (!keys || keys.length === 0) {
+    window.promptForKeys();
+    return;
   }
 
-  // 1. Lấy ID từ dropdown
   const selectedId = aiSelect.value;
   if (!selectedId) {
-    alert("Vui lòng chọn lần làm bài.");
+    cloudAlert({ title: "Thông báo", message: "Vui lòng chọn lần làm bài.", icon: "ℹ️" });
     return;
   }
   const targetAttempt = globalHistoryData.find((h) => h.id === selectedId);
   if (!targetAttempt) return;
 
-  // 2. KIỂM TRA: Nếu đã có lời giải VÀ không ép chạy lại -> Hiện cái cũ
   if (targetAttempt.aiAnalysis && !forceUpdate) {
     renderAIContent(targetAttempt);
     return;
   }
 
-  // 3. Lấy lỗi sai
   const mistakes = targetAttempt.details.filter((q) => !q.s);
   if (mistakes.length === 0) {
-    alert("Bạn đúng 100%! Không có gì để phân tích.");
+    cloudAlert({ title: "Tuyệt vời", message: "Bạn đúng 100%! Không có gì để phân tích.", icon: "🎉" });
     return;
   }
 
-  // Gửi tối đa 8 câu sai
   const limitedMistakes = mistakes.slice(0, 8);
   const mistakesJson = limitedMistakes.map((m) => ({
     question: m.q,
@@ -1155,124 +1792,327 @@ async function analyzeWithGemini(forceUpdate = false) {
     correctAnswer: m.a,
   }));
 
-  // UI Loading
   resultBox.style.display = "block";
   if (loading) loading.style.display = "flex";
   content.innerHTML = "";
 
   aiBtn.disabled = true;
-  aiBtn.textContent = forceUpdate
-    ? "♻️ Đang tổng hợp báo cáo..."
-    : "⏳ Đang phân tích chuyên sâu...";
+  aiBtn.textContent = forceUpdate ? "♻️ Đang tổng hợp báo cáo..." : "⏳ Đang phân tích chuyên sâu...";
   reAnalyzeBtn.style.display = "none";
 
-  // --- LOGIC KEY POOL ---
-  let success = false;
-  let finalHtml = "";
-  const candidateModels = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
-  ];
+  // ÉP AI VIẾT THEO CẤU TRÚC ĐỂ UI RENDER THÀNH THẺ CHUẨN
+  const prompt = `
+    Bạn là một Chuyên gia Giáo dục cấp cao, am hiểu về môn học "${currentExamName || 'Trắc nghiệm'}".
+    Hãy phân tích các lỗi sai của học sinh dựa trên dữ liệu JSON sau:
+    
+    Dữ liệu câu sai:
+    ${JSON.stringify(mistakesJson, null, 2)}
+    
+    Yêu cầu trình bày theo cấu trúc Markdown khoa học sau:
+    
+    ### 🧐 NHẬN XÉT TỔNG QUAN
+    (Nhận xét 2-3 câu về lỗ hổng kiến thức chính của học sinh)
 
-  for (let k = 0; k < API_KEYS.length; k++) {
-    const activeKey = getCurrentKey();
-    console.log(`🔄 Key đang dùng: ...${activeKey.slice(-4)}`);
+    ### ❌ CHI TIẾT LỖI SAI
+    (Dùng danh sách liệt kê để giải thích từng câu. Với mỗi câu, hãy bôi đậm **(từ khóa)** vào các khái niệm cốt lõi để học sinh dễ nhớ)
 
-    try {
-      const genAI = new GoogleGenerativeAI(activeKey);
+    > 💡 **LỜI KHUYÊN ÔN TẬP:** 
+    > (Đưa ra 2 hành động cụ thể để khắc phục)
+    
+    Lưu ý: Trình bày bằng Tiếng Việt, giải thích đi thẳng vào trọng tâm, không lan man.
+  `;
 
-      for (const modelName of candidateModels) {
-        try {
-          const model = genAI.getGenerativeModel({ model: modelName });
+  const result = await callAI(prompt);
 
-          const prompt = `
-                  Bạn là một Chuyên gia Phân tích Giáo dục.
-                  Học sinh vừa làm bài thi và sai các câu dưới đây (JSON):
-                  ${JSON.stringify(mistakesJson)}
+  if (result.text) {
+    let finalHtml = result.text;
+    if (window.marked) finalHtml = marked.parse(result.text);
 
-                  Nhiệm vụ: Tạo BÁO CÁO PHÂN TÍCH TOÀN DIỆN (HTML không markdown):
-                  1. **Dashboard (Tổng quan):**
-                     <div class="ai-dashboard">
-                        <div class="ai-card card-weakness">
-                            <div class="ai-card-title">📉 Điểm yếu cốt lõi</div>
-                            <div class="ai-card-content">...Phân tích...</div>
-                        </div>
-                        <div class="ai-card card-solution">
-                            <div class="ai-card-title">💊 Phác đồ cải thiện</div>
-                            <div class="ai-card-content">...Giải pháp...</div>
-                        </div>
-                     </div>
-                  2. **Chi tiết từng câu:**
-                     <div class="ai-response-item">
-                        <span class="ai-response-q">Câu hỏi...</span>
-                        <div class="ai-explanation">Giải thích...</div>
-                        <div class="ai-response-tip">💡 Mẹo: ...</div>
-                     </div>
-                  `;
+    // GẮN CLASS MARKDOWN-BODY VÀO ĐÂY ĐỂ CSS BẮT ĐẦU HOẠT ĐỘNG
+    finalHtml = `
+      <div class="markdown-body">
+        ${finalHtml}
+      </div>
+      <div class="ai-model-footer">
+          ⚡ Phân tích bởi: <span class="ai-model-badge">${AI_PROVIDER.toUpperCase()}</span>
+      </div>
+    `;
 
-          const result = await model.generateContent(prompt);
-          let rawHtml = result.response
-            .text()
-            .replace(/```html/g, "")
-            .replace(/```/g, "");
-
-          rawHtml = rawHtml.replace(/```html/g, "").replace(/```/g, "");
-          rawHtml = rawHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-
-          if (rawHtml.length > 50) {
-            finalHtml =
-              rawHtml +
-              `
-                        <div class="ai-model-footer">
-                            ⚡ Phân tích bởi: <span class="ai-model-badge">${modelName}</span>
-                            <span style="margin-left:5px;">(Key ${k + 1})</span>
-                        </div>
-                      `;
-            success = true;
-            break;
-          }
-        } catch (errModel) {
-          console.log(`Model ${modelName} lỗi, thử tiếp...`);
-        }
-      }
-    } catch (errKey) {
-      console.error("Key lỗi:", errKey);
-    }
-
-    if (success) break;
-    rotateKey();
-  }
-
-  if (success) {
     targetAttempt.aiAnalysis = finalHtml;
     try {
       const user = auth.currentUser;
       if (user && targetAttempt.id) {
-        await db
-          .collection("users")
-          .doc(user.uid)
-          .collection("history")
-          .doc(targetAttempt.id)
-          .update({
-            aiAnalysis: finalHtml,
-          });
+        await db.collection("users").doc(user.uid).collection("history").doc(targetAttempt.id).update({
+          aiAnalysis: finalHtml,
+        });
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
 
     renderAIContent(targetAttempt);
   } else {
-    content.innerHTML = `<p style="color:red; text-align:center; padding:20px;">❌ Hệ thống đang bận. Vui lòng thử lại sau.</p>`;
+    content.innerHTML = `<p style="color:red; text-align:center; padding:20px;">❌ ${result.error}</p>`;
     aiBtn.disabled = false;
     aiBtn.textContent = "Thử lại";
     if (loading) loading.style.display = "none";
   }
 }
 
+
 // Gắn hàm vào nút bấm
 document.getElementById("btnAnalyzeAI").onclick = analyzeWithGemini;
+
+// ---------------------------------------------------------
+// MỚI: HỎI AI VỀ MỘT CÂU HỎI CỤ THỂ
+// ---------------------------------------------------------
+// CORE: GỌI AI (GEMINI HOẶC GROQ) TRỰC TIẾP QUA REST API
+// ---------------------------------------------------------
+async function callAI(prompt, signal = null) {
+  if (AI_PROVIDER === "gemini") {
+    if (!API_KEYS || API_KEYS.length === 0) return { error: "Chưa có Key Gemini" };
+
+    for (let i = 0; i < API_KEYS.length; i++) {
+      const key = API_KEYS[currentKeyIndex];
+      try {
+        const modelNames = [
+          "gemini-1.5-flash",         // Bản Flash ổn định nhất hiện nay
+          "gemini-1.5-pro",           // Bản Pro ổn định và thông minh
+          "gemini-2.0-flash-exp",     // Bản 2.0 experimental
+          "gemini-flash-latest",      // Alias trỏ tới bản mới nhất
+          "gemini-2.5-flash",         // Giữ lại theo yêu cầu người dùng
+          "gemini-2.5-pro"            // Giữ lại theo yêu cầu người dùng
+        ];
+        let lastError = null;
+
+        for (const mName of modelNames) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${mName}:generateContent?key=${key}`;
+            const response = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+              }),
+              signal: signal
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.error?.message || `Lỗi HTTP ${response.status}`);
+            }
+
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+              return { text: data.candidates[0].content.parts[0].text };
+            } else {
+              throw new Error("Phản hồi từ Gemini không hợp lệ.");
+            }
+          } catch (modelErr) {
+            lastError = modelErr;
+            console.warn(`Thử model ${mName} qua REST API thất bại:`, modelErr.message);
+          }
+        }
+        throw lastError;
+      } catch (e) {
+        console.error(`Gemini Key ${currentKeyIndex} lỗi:`, e);
+        rotateKey("gemini");
+      }
+    }
+  } else if (AI_PROVIDER === "groq") {
+    if (!GROQ_KEYS || GROQ_KEYS.length === 0) return { error: "Chưa có Key Groq" };
+
+    for (let i = 0; i < GROQ_KEYS.length; i++) {
+      const key = GROQ_KEYS[currentGroqKeyIndex];
+      try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${key}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7
+          }),
+          signal: signal
+        });
+        const data = await response.json();
+        if (data.choices && data.choices[0]) {
+          return { text: data.choices[0].message.content };
+        } else {
+          throw new Error(data.error?.message || "Lỗi Groq");
+        }
+      } catch (e) {
+        console.error(`Groq Key ${currentGroqKeyIndex} lỗi:`, e);
+        rotateKey("groq");
+      }
+    }
+  }
+  return { error: "Tất cả các Key đều lỗi hoặc không hợp lệ." };
+}
+
+let aiAbortController = null;
+
+window.askAIForQuestion = async function (index) {
+  const q = questionsData[index];
+  if (!q) return;
+
+  const user = auth.currentUser;
+  const qKey = getSmartKey(q.question);
+  const aiBox = document.getElementById("aiResultBox");
+  const content = document.getElementById("aiContent");
+  const loading = document.getElementById("aiLoading");
+
+  // --- BƯỚC 1: KIỂM TRA CACHE TỪ FIRESTORE ---
+  if (user) {
+    try {
+      const cacheDoc = await db.collection("users").doc(user.uid).collection("ai_explanations").doc(qKey).get();
+      if (cacheDoc.exists) {
+        const data = cacheDoc.data();
+        const cacheTime = data.timestamp ? data.timestamp.toDate().getTime() : 0;
+        const diffDays = (Date.now() - cacheTime) / (1000 * 60 * 60 * 24);
+
+        if (diffDays <= 15) {
+          console.log("🚀 Lấy lời giải từ Cache Firestore (Chưa quá 15 ngày)");
+          showAIResult(index, q.question, data.content);
+          return;
+        } else {
+          console.log("⏳ Cache đã quá 15 ngày, đang làm mới...");
+        }
+      }
+    } catch (e) {
+      console.warn("Lỗi kiểm tra AI Cache:", e);
+    }
+  }
+
+  // --- BƯỚC 2: CHỌN MODEL ---
+  const useGroq = await cloudAlert({
+    type: 'confirm',
+    title: 'Chọn AI Giải Đáp',
+    message: `Bạn muốn dùng AI nào để giải thích Câu ${index + 1}?`,
+    confirmText: 'Groq (Siêu nhanh)',
+    cancelText: 'Gemini (Google)',
+    icon: '✨'
+  });
+  
+  if (useGroq === null) return; // Người dùng nhấn Hủy
+
+  AI_PROVIDER = useGroq ? "groq" : "gemini";
+  updateAIUI();
+
+  // Lấy tên môn học từ UI
+  const examNameElem = document.getElementById("examName");
+  const currentExamName = examNameElem ? examNameElem.textContent : "Đề thi";
+
+  const keys = AI_PROVIDER === "gemini" ? API_KEYS : GROQ_KEYS;
+  if (!keys || keys.length === 0) {
+    window.promptForKeys();
+    return;
+  }
+
+  // --- BƯỚC 3: CHUẨN BỊ UI & ABORT CONTROLLER ---
+  if (aiAbortController) aiAbortController.abort(); // Hủy yêu cầu cũ nếu có
+  aiAbortController = new AbortController();
+
+  if (!aiBox.classList.contains("expanded")) {
+    document.body.appendChild(aiBox);
+    aiBox.classList.add("expanded");
+    document.body.classList.add("ai-open");
+  }
+
+  aiBox.style.display = "block";
+  aiBox.classList.add("is-loading"); // Hiện loading mới
+  if (loading) loading.style.display = "flex";
+  content.innerHTML = "";
+
+  const prompt = `
+    Bạn là chuyên gia luyện thi đỉnh cao môn "${currentExamName || 'này'}". 
+    Nhiệm vụ của bạn là giải thích câu hỏi trắc nghiệm một cách TRỰC DIỆN, NGẮN GỌN và KHOA HỌC nhất.
+    TUYỆT ĐỐI KHÔNG chào hỏi, KHÔNG nói câu thừa. Hãy bắt đầu ngay vào nội dung.
+    
+    Câu hỏi: ${q.question}
+    Các phương án:
+    ${q.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join("\n")}
+    
+    Đáp án chuẩn xác là: ${q.answer}
+    
+    BẮT BUỘC trình bày theo đúng định dạng Markdown sau:
+    
+    ### ✅ ĐÁP ÁN CHUẨN: **${q.answer}**
+    (Viết 1-2 câu giải thích đi thẳng vào bản chất: Vì sao đây là đáp án đúng).
+    
+    ### 🎯 TẠI SAO CÁC CÂU KIA SAI?
+    (Dùng gạch đầu dòng "-" để phân tích cực ngắn gọn các phương án còn lại. Tại sao nó sai? Nó đánh lừa ở điểm nào? Nhớ bôi đậm **(từ khóa)** điểm sai đó).
+    
+    > 💡 **MẸO GHI NHỚ:**
+    > (Cho 1 mẹo nhỏ, câu thần chú, từ khóa hoặc quy tắc loại trừ để làm nhanh dạng câu này).
+  `;
+
+  try {
+    const result = await callAI(prompt, aiAbortController.signal);
+    aiBox.classList.remove("is-loading");
+    if (loading) loading.style.display = "none";
+
+    if (result.text) {
+      let finalHtml = window.marked ? marked.parse(result.text) : result.text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      
+      // Lưu vào Firestore Cache
+      if (user) {
+        db.collection("users").doc(user.uid).collection("ai_explanations").doc(qKey).set({
+          content: finalHtml,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          q: q.question
+        }).catch(e => console.error("Lỗi lưu AI Cache:", e));
+      }
+
+      showAIResult(index, q.question, finalHtml);
+    } else {
+      content.innerHTML = `<div style="text-align:center; padding: 40px; color:#ef4444;"><p>❌ ${result.error}</p></div>`;
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      console.log("🛑 Yêu cầu AI đã bị hủy bởi người dùng.");
+    } else {
+      console.error("Lỗi AI:", err);
+      aiBox.classList.remove("is-loading");
+      content.innerHTML = `<div style="text-align:center; padding: 40px; color:#ef4444;"><p>❌ Lỗi kết nối AI</p></div>`;
+    }
+  }
+};
+
+// Hàm phụ để hiển thị kết quả AI (tránh lặp code)
+function showAIResult(index, questionText, htmlContent) {
+  const aiBox = document.getElementById("aiResultBox");
+  const content = document.getElementById("aiContent");
+  const loading = document.getElementById("aiLoading");
+
+  if (!aiBox.classList.contains("expanded")) {
+    document.body.appendChild(aiBox);
+    aiBox.classList.add("expanded");
+    document.body.classList.add("ai-open");
+  }
+  
+  aiBox.style.display = "block";
+  aiBox.classList.remove("is-loading");
+  if (loading) loading.style.display = "none";
+
+  content.innerHTML = `
+    <div class="ai-question-analysis" style="animation: fadeIn 0.4s ease;">
+      <div class="q-analysis-header">
+        <h4>🤖 GIẢI ĐÁP BỞI ${AI_PROVIDER.toUpperCase()} - CÂU ${index + 1}:</h4>
+        <p>${questionText}</p>
+      </div>
+      
+      <div class="markdown-body">
+        ${htmlContent}
+      </div>
+      
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center;">
+          <button class="btn-cloud-action" onclick="document.getElementById('btnCloseExpanded').click()" style="background:#3b82f6; color:white; border:none; padding: 10px 24px; font-size: 15px;">Đã hiểu, quay lại</button>
+      </div>
+    </div>
+  `;
+}
 
 // ========================
 // CHART & THỐNG KÊ
@@ -1403,8 +2243,8 @@ function renderOverview(examName, data) {
     <div class="overview-item"><span class="overview-val">${count}</span><span class="overview-label">Lần làm</span></div>
     <div style="width:1px; height:30px; background:#bfdbfe;"></div>
     <div class="overview-item"><span class="overview-val" style="color:${getMaxColor(
-      maxScore
-    )}">${maxScore} câu</span><span class="overview-label">Cao nhất</span></div>
+    maxScore
+  )}">${maxScore} câu</span><span class="overview-label">Cao nhất</span></div>
     <div style="width:1px; height:30px; background:#bfdbfe;"></div>
     <div class="overview-item"><span class="overview-val">${avgScore}%</span><span class="overview-label">Trung bình</span></div>
   `;
@@ -1416,7 +2256,7 @@ function getMaxColor(p) {
 window.showHistory = async function () {
   const user = auth.currentUser;
   if (!user) {
-    alert("Vui lòng đăng nhập.");
+    cloudAlert({ title: "Yêu cầu đăng nhập", message: "Vui lòng đăng nhập để xem lịch sử làm bài.", icon: "🔐" });
     return;
   }
   const modal = document.getElementById("historyModal");
@@ -1641,40 +2481,27 @@ function renderTimeline(filterName) {
       detailsHtml = d.details
         .map((q, idx) => {
           const isRight = q.s;
-          return `<div class="hist-q-item ${
-            isRight ? "hist-correct" : "hist-wrong"
-          }"><div class="hist-q-text"><span style="font-weight:bold; color:${
-            isRight ? "#16a34a" : "#dc2626"
-          }">Câu ${idx + 1}:</span> ${q.q}</div><div class="hist-user-ans">${
-            isRight ? "✅" : "❌"
-          } Bạn chọn: <b>${q.u || "(Bỏ trống)"}</b></div>${
-            !isRight
+          return `<div class="hist-q-item ${isRight ? "hist-correct" : "hist-wrong"
+            }"><div class="hist-q-text"><span style="font-weight:bold; color:${isRight ? "#16a34a" : "#dc2626"
+            }">Câu ${idx + 1}:</span> ${q.q}</div><div class="hist-user-ans">${isRight ? "✅" : "❌"
+            } Bạn chọn: <b>${q.u || "(Bỏ trống)"}</b></div>${!isRight
               ? `<div class="hist-correct-ans">👉 Đáp án đúng: <b>${q.a}</b></div>`
               : ""
-          }</div>`;
+            }</div>`;
         })
         .join("");
     }
-    html += `<div class="history-card-wrapper" id="card-${
-      d.id
-    }"><div class="history-summary" onclick="window.toggleHistoryDetail('${
-      d.id
-    }')"><div class="hist-left"><div class="hist-name">${
-      d.examName
-    }</div><div class="hist-date">${
-      d.dateStr
-    }</div></div><div class="hist-right"><div style="text-align:right; margin-right:8px;"><div class="hist-score" style="color:${scoreColor}">${
-      d.score
-    }/${
-      d.total
-    }</div><div class="hist-percent" style="background:${scoreColor}">${
-      d.percent
-    }%</div></div><div class="hist-arrow">▼</div></div></div><div id="detail-${
-      d.id
-    }" class="history-details-box" style="display:none;">${
-      detailsHtml ||
+    html += `<div class="history-card-wrapper" id="card-${d.id
+      }"><div class="history-summary" onclick="window.toggleHistoryDetail('${d.id
+      }')"><div class="hist-left"><div class="hist-name">${d.examName
+      }</div><div class="hist-date">${d.dateStr
+      }</div></div><div class="hist-right"><div style="text-align:right; margin-right:8px;"><div class="hist-score" style="color:${scoreColor}">${d.score
+      }/${d.total
+      }</div><div class="hist-percent" style="background:${scoreColor}">${d.percent
+      }%</div></div><div class="hist-arrow">▼</div></div></div><div id="detail-${d.id
+      }" class="history-details-box" style="display:none;">${detailsHtml ||
       '<p style="padding:10px; text-align:center;">Không có dữ liệu chi tiết.</p>'
-    }</div></div>`;
+      }</div></div>`;
   });
   list.innerHTML = html;
 }
@@ -1755,8 +2582,59 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  // Sự kiện Cloud Upload (Nút chọn)
+  const cloudFileInput = document.getElementById("cloudFileInput");
+  if (cloudFileInput) {
+    cloudFileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      window.focus();
+      handleCloudFileDropOrSelect(file);
+      cloudFileInput.value = "";
+    };
+  }
+
+  // Sự kiện Kéo Thả (Drag & Drop)
+  const cloudBody = document.querySelector(".cloud-body");
+  if (cloudBody) {
+    cloudBody.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      cloudBody.classList.add("drag-over");
+    });
+    cloudBody.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      cloudBody.classList.remove("drag-over");
+    });
+    cloudBody.addEventListener("drop", (e) => {
+      e.preventDefault();
+      cloudBody.classList.remove("drag-over");
+      const file = e.dataTransfer.files[0];
+      if (file && file.name.endsWith(".json")) {
+        handleCloudFileDropOrSelect(file);
+      } else {
+        cloudAlert({ title: 'Lỗi File', message: 'Vui lòng thả file JSON hợp lệ!', icon: '⚠️' });
+      }
+    });
+  }
+
+  async function handleCloudFileDropOrSelect(file) {
+    const defaultName = file.name.replace(/\.json$/i, "");
+    const displayName = await cloudAlert({
+      type: 'prompt',
+      title: 'Tên đề thi',
+      message: 'Nhập tên hiển thị cho đề thi này:',
+      icon: '📝',
+      defaultValue: defaultName
+    });
+
+    if (displayName !== null) {
+      uploadJsonToCloud(file, displayName.trim() || defaultName);
+    }
+  }
+
   // 4. Sự kiện Nộp bài
-  const handleSubmission = () => {
+  const handleSubmission = async () => {
     if (examFinished) return;
     if (!questionsData || questionsData.length === 0) return;
     const answeredCount = document.querySelectorAll(
@@ -1768,7 +2646,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (unanswer > 0) {
       msg = `Bạn còn ${unanswer} câu chưa chọn đáp án.\nBạn có chắc chắn muốn nộp bài không?`;
     }
-    if (confirm(msg)) {
+
+    const confirmSub = await cloudAlert({
+      type: 'confirm',
+      title: 'Nộp bài',
+      message: msg,
+      icon: '📝'
+    });
+
+    if (confirmSub) {
       grade(false);
       // Thu gọn header trên mobile sau khi nộp
       if (window.innerWidth <= 850) {
@@ -1830,6 +2716,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       if (expandBtn) expandBtn.style.display = "none";
     } else {
+      if (aiAbortController) aiAbortController.abort(); // Hủy yêu cầu AI khi đóng modal
       aiBox.classList.remove("expanded");
       aiBox.classList.remove("is-loading");
       document.body.classList.remove("ai-open");
@@ -1852,16 +2739,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 8. Các nút chức năng AI
+  document.getElementById("btnAISettings").onclick = window.promptForKeys;
   document.getElementById("btnAnalyzeAI").onclick = () =>
     analyzeWithGemini(false);
   const btnRe = document.getElementById("btnReAnalyzeAI");
   if (btnRe) {
-    btnRe.onclick = () => {
-      if (
-        confirm(
-          "Bạn có chắc muốn chạy lại AI không?\n(Sẽ tốn thêm 1 lượt dùng trong ngày)"
-        )
-      ) {
+    btnRe.onclick = async () => {
+      const confirmRe = await cloudAlert({
+        type: 'confirm',
+        title: 'Chạy lại AI',
+        message: 'Bạn có chắc muốn chạy lại AI không?\n(Sẽ tốn thêm 1 lượt dùng trong ngày)',
+        icon: '🔄'
+      });
+      if (confirmRe) {
         analyzeWithGemini(true);
       }
     };
@@ -1905,7 +2795,7 @@ document.addEventListener("DOMContentLoaded", () => {
 let currentFcIndex = 0; // Biến theo dõi câu hiện tại
 
 // 1. Chế độ: FLASHCARD
-window.startFlashcardMode = function () {
+window.startFlashcardMode = async function () {
   // --- FIX: Tự động nạp dữ liệu từ file vừa chọn nếu chưa bấm Start ---
   if ((!questionsData || questionsData.length === 0) && pendingData) {
     // Clone dữ liệu từ pendingData sang questionsData
@@ -1925,18 +2815,19 @@ window.startFlashcardMode = function () {
 
   // Kiểm tra lại lần nữa
   if (!questionsData || questionsData.length === 0) {
-    alert(
-      "Bạn chưa chọn đề thi nào! Vui lòng Tải file hoặc chọn từ Drive trước."
-    );
+    cloudAlert({ title: "Thông báo", message: "Bạn chưa chọn đề thi nào! Vui lòng Tải file hoặc chọn từ Drive trước.", icon: "ℹ️" });
     return;
   }
 
   document.getElementById("studyOverlay").classList.remove("open");
 
-  if (
-    !confirm("Bắt đầu chế độ Flashcard?\n(Giao diện tập trung, mỗi lần 1 câu)")
-  )
-    return;
+  const confirmFc = await cloudAlert({
+    type: 'confirm',
+    title: 'Flashcard',
+    message: 'Bắt đầu chế độ Flashcard?\n(Giao diện tập trung, mỗi lần 1 câu)',
+    icon: '⚡'
+  });
+  if (!confirmFc) return;
 
   // Setup dữ liệu
   isReviewMode = true;
@@ -2003,9 +2894,8 @@ window.renderFlashcard = function () {
 
   // Thêm vùng giải thích (ẩn mặc định)
   html += `<div id="fcExplain" class="review-explain" style="display:none; margin-top:20px;">
-              <b>💡 Giải thích:</b> ${
-                q.explain || "Không có giải thích chi tiết."
-              }
+              <b>💡 Giải thích:</b> ${q.explain || "Không có giải thích chi tiết."
+    }
            </div>`;
 
   container.innerHTML = html;
@@ -2090,12 +2980,18 @@ function showFcFeedback(isCorrect, remaining = 0) {
 }
 
 // 5. Điều hướng
-window.nextFlashcard = function () {
+window.nextFlashcard = async function () {
   if (currentFcIndex < questionsData.length - 1) {
     currentFcIndex++;
     renderFlashcard();
   } else {
-    if (confirm("Bạn đã hoàn thành bộ Flashcard! Quay lại màn hình chính?")) {
+    const confirmExit = await cloudAlert({
+      type: 'confirm',
+      title: 'Hoàn thành',
+      message: 'Bạn đã hoàn thành bộ Flashcard! Quay lại màn hình chính?',
+      icon: '🏁'
+    });
+    if (confirmExit) {
       window.exitFlashcardMode();
     }
   }
@@ -2122,9 +3018,9 @@ window.exitFlashcardMode = function () {
 };
 
 // 2. Chế độ: LUYỆN TẬP TRUNG (Câu sai từ lịch sử)
-window.startWeaknessReview = function () {
+window.startWeaknessReview = async function () {
   if (!globalHistoryData || globalHistoryData.length === 0) {
-    alert("Bạn chưa có lịch sử làm bài. Hãy làm thử vài đề trước!");
+    cloudAlert({ title: "Thông báo", message: "Bạn chưa có lịch sử làm bài. Hãy làm thử vài đề trước!", icon: "ℹ️" });
     return;
   }
   document.getElementById("studyOverlay").classList.remove("open");
@@ -2146,16 +3042,17 @@ window.startWeaknessReview = function () {
 
   const weakList = Object.values(wrongQuestionsMap);
   if (weakList.length === 0) {
-    alert("Tuyệt vời! Bạn không có câu sai nào trong lịch sử.");
+    cloudAlert({ title: "Tuyệt vời", message: "Tuyệt vời! Bạn không có câu sai nào trong lịch sử.", icon: "🎉" });
     return;
   }
 
-  if (
-    !confirm(
-      `Tìm thấy ${weakList.length} câu bạn từng làm sai.\nBạn có muốn ôn tập lại không?`
-    )
-  )
-    return;
+  const confirmWeak = await cloudAlert({
+    type: 'confirm',
+    title: 'Ôn tập câu sai',
+    message: `Tìm thấy ${weakList.length} câu bạn từng làm sai.\nBạn có muốn ôn tập lại không?`,
+    icon: '🧠'
+  });
+  if (!confirmWeak) return;
 
   questionsData = weakList.map((item) => {
     return {
@@ -2188,7 +3085,7 @@ window.startWeaknessReview = function () {
 window.startReviewMistakes = async function () {
   const user = auth.currentUser;
   if (!user) {
-    alert("⚠️ Bạn cần Đăng nhập để dùng tính năng đồng bộ này!");
+    cloudAlert({ title: "Đăng nhập", message: "Bạn cần Đăng nhập để dùng tính năng đồng bộ này!", icon: "⚠️" });
     return;
   }
 
@@ -2200,9 +3097,7 @@ window.startReviewMistakes = async function () {
   }
 
   if (!examName) {
-    alert(
-      "Vui lòng chọn một đề thi trước để hệ thống biết bạn muốn ôn đề nào."
-    );
+    cloudAlert({ title: "Thông báo", message: "Vui lòng chọn một đề thi trước để hệ thống biết bạn muốn ôn đề nào.", icon: "ℹ️" });
     return;
   }
 
@@ -2224,20 +3119,21 @@ window.startReviewMistakes = async function () {
   document.getElementById("studyOverlay").classList.remove("open");
 
   if (mistakeKeys.length === 0) {
-    alert(`Tuyệt vời! Bạn không có câu sai nào được lưu cho đề "${examName}".`);
+    cloudAlert({ title: "Thông báo", message: `Tuyệt vời! Bạn không có câu sai nào được lưu cho đề "${examName}".`, icon: "🎉" });
     return;
   }
 
-  if (
-    !confirm(
-      `☁️ Cloud: Tìm thấy ${mistakeKeys.length} câu bạn chưa thuộc trong đề "${examName}".\nBạn có muốn ôn lại ngay không?`
-    )
-  )
-    return;
+  const confirmReview = await cloudAlert({
+    type: 'confirm',
+    title: 'Ôn câu sai (Cloud)',
+    message: `Cloud: Tìm thấy ${mistakeKeys.length} câu bạn chưa thuộc trong đề "${examName}".\nBạn có muốn ôn lại ngay không?`,
+    icon: '☁️'
+  });
+  if (!confirmReview) return;
 
   // 3. Lấy nội dung câu hỏi từ dữ liệu gốc
   if (!pendingData || !pendingData.data) {
-    alert("Vui lòng nạp lại file đề gốc để hệ thống lấy nội dung câu hỏi.");
+    cloudAlert({ title: "Lỗi", message: "Vui lòng nạp lại file đề gốc để hệ thống lấy nội dung câu hỏi.", icon: "❌" });
     return;
   }
 
@@ -2248,9 +3144,7 @@ window.startReviewMistakes = async function () {
   });
 
   if (reviewQuestions.length === 0) {
-    alert(
-      "Lỗi: Dữ liệu trên Cloud không khớp với file đề hiện tại.\n(Có thể nội dung câu hỏi trong file đã bị sửa?)"
-    );
+    cloudAlert({ title: "Lỗi đồng bộ", message: "Dữ liệu trên Cloud không khớp với file đề hiện tại.\n(Có thể nội dung câu hỏi trong file đã bị sửa?)", icon: "⚠️" });
     return;
   }
 
@@ -2353,11 +3247,11 @@ async function gainXP(amount) {
   }
 
   if (leveledUp) {
-    alert(
-      `🎉 CHÚC MỪNG! Bạn đã thăng lên Cấp ${
-        userStats.level
-      }!\nĐộ khó cấp tiếp theo: ${getRequiredXP(userStats.level)} XP`
-    );
+    cloudAlert({
+      title: "🎉 THĂNG CẤP!",
+      message: `Chúc mừng! Bạn đã thăng lên Cấp ${userStats.level}!\nĐộ khó cấp tiếp theo: ${getRequiredXP(userStats.level)} XP`,
+      icon: "🏆"
+    });
   }
 
   // Cập nhật Streak (Nếu hôm nay chưa tính)

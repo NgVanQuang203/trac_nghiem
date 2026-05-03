@@ -4,13 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thi Trắc Nghiệm Online & AI Tutor</title>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="style-darkmode.css" />
+    <link rel="stylesheet" href="style.css?v=1.1" />
+    <link rel="stylesheet" href="style-darkmode.css?v=1.1" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   </head>
   <body>
     <div class="exam-wrapper">
@@ -26,16 +27,18 @@
         <div class="header-center">
           <div id="setupPanel" class="setup-panel">
             <div class="file-select-group">
-              <label class="btn-upload">
-                <input type="file" id="fileInput" accept=".json" />
-                <span>📂 Chọn File</span>
-              </label>
+              <div class="cloud-upload-wrapper">
+                <button class="btn-upload" type="button">
+                  <span>📂 Chọn File</span>
+                </button>
+                <input type="file" id="fileInput" class="cloud-file-input" accept=".json" onchange="loadFileFromLocal()" onmousedown="window.forceFocusBack()" />
+              </div>
               <button
                 class="btn-icon-drive"
                 id="btnSelectDrive"
-                title="Chọn từ Google Drive"
+                title="Chọn từ Kho Đề Của Tôi"
               >
-                ☁️ Drive
+                ☁️ Kho Đề
               </button>
             </div>
 
@@ -319,6 +322,8 @@
                     style="max-width: 200px; font-size: 13px"
                   ></select>
 
+                  <span id="activeAIProviderLabel" style="font-size: 10px; padding: 2px 8px; background: #e0e7ff; color: #4338ca; border-radius: 12px; font-weight: 700; text-transform: uppercase; margin-left: 5px;">Gemini</span>
+
                   <button
                     id="btnExpandAI"
                     class="btn-icon-small"
@@ -336,6 +341,14 @@
                   >
                     ↻ Giải lại
                   </button>
+
+                  <button
+                    id="btnAISettings"
+                    class="btn-icon-small"
+                    title="Cấu hình AI (Gemini/Groq)"
+                  >
+                    ⚙️
+                  </button>
                 </div>
 
                 <button id="btnAnalyzeAI" class="btn-ai-magic">
@@ -348,9 +361,13 @@
                   ✕ Đóng
                 </button>
 
-                <div id="aiLoading" class="ai-loading">
-                  <div class="spinner"></div>
-                  Đang suy nghĩ & lưu vào lịch sử...
+                <div id="aiLoading" class="ai-loading-container">
+                  <div class="ai-thinking-bubbles">
+                    <div class="ai-bubble"></div>
+                    <div class="ai-bubble"></div>
+                    <div class="ai-bubble"></div>
+                  </div>
+                  <div class="ai-loading-text">Gia sư AI đang suy nghĩ...</div>
                 </div>
                 <div id="aiContent"></div>
               </div>
@@ -373,50 +390,87 @@
     </div>
     <div id="driveModal" class="modal-overlay" style="display: none">
       <div class="modal-content drive-modal-box">
+
+        <!-- HEADER GRADIENT -->
         <div class="drive-header">
           <div class="drive-brand">
-            <span class="drive-logo">☁️</span>
+            <div class="drive-logo-wrap">☁️</div>
             <div class="drive-title">
-              <h3>Google Drive</h3>
-              <span class="drive-subtitle">Chọn đề thi từ thư mục của bạn</span>
+              <h3>Kho Đề Của Tôi</h3>
+              <span class="drive-subtitle" id="driveSubtitle">Quản lý và ôn luyện đề thi</span>
             </div>
           </div>
-          <button id="btnCloseDrive" class="btn-close-drive">✕</button>
+          <button id="btnCloseDrive" class="btn-close-drive" title="Đóng">✕</button>
         </div>
 
-        <div class="drive-nav-bar">
-          <button
-            id="btnDriveBack"
-            class="btn-drive-nav"
-            disabled
-            title="Quay lại"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div class="drive-breadcrumb-wrapper">
-            <div id="driveBreadcrumb" class="drive-breadcrumb">Trang chủ</div>
+        <!-- TOOLBAR: BREADCRUMB + ACTIONS -->
+        <div class="cloud-toolbar">
+          <div class="cloud-breadcrumb" id="cloudBreadcrumb">
+            <span class="bc-item bc-home" onclick="window.navigateToFolder(null)"><span class="bc-home-icon">🏠</span><span class="bc-home-text">Kho Đề</span></span>
+          </div>
+          <div class="cloud-actions">
+            <button class="btn-cloud-action btn-action-folder" onclick="window.promptCreateFolder()" title="Tạo thư mục mới">
+              <span class="btn-action-icon">➕</span>
+              <span class="btn-action-label">Tạo thư mục mới</span>
+            </button>
+            <div class="cloud-upload-wrapper">
+              <button class="btn-cloud-action btn-cloud-upload" title="Tải file JSON lên">
+                <span class="btn-action-icon">⬆️</span>
+                <span class="btn-action-label">Tải lên</span>
+              </button>
+              <input type="file" id="cloudFileInput" class="cloud-file-input" accept=".json" onmousedown="window.forceFocusBack()" />
+            </div>
           </div>
         </div>
 
-        <div class="drive-body">
-          <div id="driveLoading" class="drive-loading">
-            <div class="drive-spinner"></div>
-            <span>Đang đồng bộ dữ liệu...</span>
-          </div>
+        <!-- UPLOAD STATUS BANNER -->
+        <div id="driveUploadStatus" class="drive-upload-status" style="display:none;"></div>
 
-          <div id="driveListArea" class="drive-grid"></div>
+        <!-- GRID BODY -->
+        <div class="cloud-body" id="cloudBody">
+          <!-- Loading Overlay -->
+          <div id="driveLoading" class="drive-loading-overlay" style="display:none">
+            <div class="drive-skeleton-grid">
+              <div class="cloud-skeleton"></div>
+              <div class="cloud-skeleton"></div>
+              <div class="cloud-skeleton"></div>
+              <div class="cloud-skeleton"></div>
+              <div class="cloud-skeleton"></div>
+              <div class="cloud-skeleton"></div>
+            </div>
+          </div>
+          <div id="cloudGridArea" class="cloud-grid"></div>
+        </div>
+
+        <!-- Legacy back button (hidden, prevents JS errors) -->
+        <button id="btnDriveBack" style="display:none"></button>
+      </div>
+    </div>
+    <!-- Modal: Di chuyển đến -->
+    <div id="moveModal" class="modal-overlay" style="z-index: 200; display:none;">
+      <div class="modal-content move-modal-box">
+        <div class="drive-header" style="padding: 14px 20px;">
+          <div class="drive-brand">
+            <div class="drive-logo-wrap" style="width: 36px; height: 36px; font-size: 18px;">🚚</div>
+            <div class="drive-title">
+              <h3 style="font-size: 15px;">Di chuyển đến...</h3>
+            </div>
+          </div>
+          <button class="btn-close-drive" onclick="document.getElementById('moveModal').style.display='none'">✕</button>
+        </div>
+        <div class="cloud-toolbar" style="padding: 10px 20px;">
+          <div id="moveBreadcrumb" class="cloud-breadcrumb"></div>
+        </div>
+        <div class="cloud-body" style="padding: 15px; min-height: 250px; max-height: 400px; display: flex; flex-direction: column;">
+          <div id="moveGridArea" class="cloud-grid" style="flex: 1; align-content: start;"></div>
+        </div>
+        <div class="move-footer">
+          <span id="moveTargetLabel" class="move-target-label">📍 Đang chọn: <b>Gốc (Kho Đề)</b></span>
+          <button class="btn-cloud-action btn-confirm-move" id="btnConfirmMove">Xác nhận chuyển</button>
         </div>
       </div>
     </div>
+
     <div id="studyOverlay" class="question-nav-overlay" style="z-index: 150">
       <aside class="question-nav study-sidebar">
         <div class="user-stats-card" id="gamificationPanel">
@@ -506,6 +560,28 @@
         </div>
       </aside>
     </div>
+
+    <!-- CUSTOM CLOUD ALERT MODAL -->
+    <div id="cloudAlertOverlay" class="cloud-alert-overlay" style="display: none;">
+      <div class="cloud-alert-box">
+        <button id="btnCloseCloudAlert" class="btn-close-alert-top" title="Đóng">✕</button>
+        <div id="cloudAlertIcon" class="cloud-alert-icon">⚠️</div>
+        <div id="cloudAlertTitle" class="cloud-alert-title">Xác nhận</div>
+        <div id="cloudAlertMessage" class="cloud-alert-message">Bạn có chắc chắn?</div>
+        <div id="cloudAlertInputWrapper" style="display: none; margin-top: 15px; width: 100%;">
+          <input type="text" id="cloudAlertInput" class="cloud-alert-input" />
+        </div>
+        <div class="cloud-alert-actions">
+          <button id="btnCloudAlertCancel" class="cloud-alert-btn cancel">Hủy</button>
+          <button id="btnCloudAlertConfirm" class="cloud-alert-btn confirm">Đồng ý</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Dropdown for Cloud Items -->
+    <div id="globalCloudDropdownOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99998;" onclick="window.closeGlobalDropdown()"></div>
+    <div id="globalCloudDropdown" class="cloud-dropdown" style="display:none; position:fixed; z-index:99999;"></div>
+
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -525,6 +601,6 @@
       const provider = new firebase.auth.GoogleAuthProvider();
     </script>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=1.1"></script>
   </body>
 </html>
