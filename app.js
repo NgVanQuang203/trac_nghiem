@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // IMPORT GOOGLE GEMINI SDK
 // ========================
 //import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
@@ -372,15 +372,31 @@ async function fetchMistakesFromCloud(examName) {
 function setHeaderMode(mode) {
   const setup = document.getElementById("setupPanel");
   const status = document.getElementById("statusPanel");
+  const mainHeader = document.getElementById("mainHeader");
+  const activeHeader = document.getElementById("examActiveHeader");
   const progressBar = document.querySelector(".progress-container"); // Lấy thanh tiến trình
+  document.body.classList.toggle("exam-taking", mode === "active");
+  document.body.classList.toggle("home-mode", mode !== "active");
 
   if (mode === "active") {
     // --- ĐANG LÀM BÀI ---
+    const summaryEl = document.getElementById("examHistorySummary");
+    if (summaryEl) summaryEl.style.display = "none";
+    const activeExamName = document.getElementById("activeExamName");
+    const examName = document.getElementById("examName");
+    if (activeExamName && examName) activeExamName.textContent = examName.textContent;
+    if (mainHeader) mainHeader.style.display = "none";
+    if (activeHeader) activeHeader.style.display = "flex";
     setup.style.display = "none";
     status.style.display = "flex";
     if (progressBar) progressBar.style.display = "block"; // HIỆN thanh tiến trình
   } else {
     // --- CHẾ ĐỘ CHỜ / SETUP ---
+    if (mainHeader) mainHeader.style.display = "flex";
+    if (activeHeader) activeHeader.style.display = "none";
+    if (mainHeader) mainHeader.classList.remove("header-hidden");
+    const headerToggle = document.getElementById("btnToggleHeaderMobile");
+    if (headerToggle) headerToggle.textContent = "▲";
     setup.style.display = "flex";
     status.style.display = "none";
     if (progressBar) progressBar.style.display = "none"; // ẨN thanh tiến trình
@@ -389,18 +405,76 @@ function setHeaderMode(mode) {
 
 function updateFileStatus(name, ready) {
   const el = document.getElementById("fileStatusLabel");
+  const homeSelectedExam = document.getElementById("homeSelectedExam");
   if (ready) {
-    el.textContent = `✅ Đã tải: ${name}`;
+    el.innerHTML = `<span class="file-status-dot"></span><span>Đã chọn: ${name}</span>`;
     el.className = "file-status ready";
+    if (homeSelectedExam) homeSelectedExam.textContent = name;
     document.getElementById("btnStart").disabled = false;
     document.getElementById("btnStart").style.opacity = "1";
-    document.getElementById("btnStart").textContent = "Bắt đầu ngay ▶";
+    document.getElementById("btnStart").innerHTML = `<span class="menu-emoji emoji-pop" aria-hidden="true">🚀</span><span>Bắt đầu ngay</span>`;
   } else {
-    el.textContent = "Chưa chọn đề";
+    el.innerHTML = `<span class="file-status-dot"></span><span>Chưa chọn đề</span>`;
     el.className = "file-status";
+    if (homeSelectedExam) homeSelectedExam.textContent = "Chưa có đề được chọn";
     document.getElementById("btnStart").disabled = true;
     document.getElementById("btnStart").style.opacity = "0.5";
+    document.getElementById("btnStart").innerHTML = `<span class="menu-emoji emoji-pop" aria-hidden="true">🚀</span><span>Bắt đầu</span>`;
   }
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderHomeScreen() {
+  const quiz = document.getElementById("quiz");
+  if (!quiz) return;
+  quiz.innerHTML = `
+    <div class="home-shell">
+      <section class="home-hero">
+        <div class="home-hero-copy">
+          <span class="home-kicker">MindQuiz Workspace</span>
+          <h2>🎯 Luyện đề tập trung, theo dõi tiến bộ rõ ràng</h2>
+          <p>Chọn đề từ máy hoặc Kho Đề, đặt thời gian và bắt đầu phiên làm bài ngay trên cùng một màn hình.</p>
+          <div class="home-actions">
+            <button class="home-primary-action" type="button" onclick="document.getElementById('fileInput').click()">
+              <span class="emoji-pop">📄</span>
+              <span>Tải đề JSON</span>
+            </button>
+            <button class="home-secondary-action" type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
+              <span class="emoji-pop">🗂️</span>
+              <span>Mở Kho Đề</span>
+            </button>
+          </div>
+        </div>
+        <div class="home-focus-panel">
+          <div class="focus-ring">
+            <span class="emoji-pulse">🎯</span>
+          </div>
+          <div>
+            <span>Phiên luyện tập</span>
+            <strong id="homeSelectedExam">Chưa có đề được chọn</strong>
+          </div>
+        </div>
+      </section>
+      <section class="home-grid">
+        <article class="home-card">
+          <span class="home-card-emoji emoji-pop">🗂️</span>
+          <span>🗂️ Nguồn đề</span>
+          <strong>Local / Cloud</strong>
+        </article>
+        <article class="home-card">
+          <span class="home-card-emoji emoji-pop">⏱️</span>
+          <span>⏱️ Thời lượng</span>
+          <strong><span id="homeTimePreview">${document.getElementById("timeInput")?.value || 15}</span> phút</strong>
+        </article>
+        <article class="home-card">
+          <span class="home-card-emoji emoji-pop">📈</span>
+          <span>📈 Lịch sử</span>
+          <strong>Có phân tích</strong>
+        </article>
+      </section>
+    </div>
+  `;
+  if (window.lucide) lucide.createIcons();
 }
 
 function formatTime(sec) {
@@ -411,9 +485,17 @@ function formatTime(sec) {
 
 function updateTimerDisplay() {
   const el = document.getElementById("timer");
+  const activeEl = document.getElementById("activeTimerDisplay");
+  const activeBubble = document.getElementById("activeTimerBubble");
   el.textContent = formatTime(remainingSeconds);
   el.classList.remove("danger");
-  if (remainingSeconds <= 60) el.classList.add("danger");
+  if (activeEl) activeEl.textContent = formatTime(remainingSeconds);
+  if (activeBubble) activeBubble.classList.remove("danger");
+  if (remainingSeconds <= 60) {
+    el.classList.add("danger");
+    if (activeBubble) activeBubble.classList.add("danger");
+  }
+  if (window.lucide) lucide.createIcons();
 }
 
 function startTimer() {
@@ -467,12 +549,36 @@ async function handleDataLoaded(data, fileName) {
   updateFileStatus(fileName, true);
 
   document.getElementById("quiz").innerHTML = `
-    <div class="welcome-state">
-      <div style="font-size:40px">✅</div>
-      <h3>Đề "${fileName}" đã sẵn sàng!</h3>
-      <p>Hãy chỉnh thời gian và nhấn nút <b>"Bắt đầu ngay"</b> ở trên.</p>
+    <div class="home-shell is-ready">
+      <section class="home-hero">
+        <div class="home-hero-copy">
+          <span class="home-kicker">✅ Đề đã sẵn sàng</span>
+          <h2>${fileName}</h2>
+          <p>📝 ${data.length} câu hỏi đã được nạp vào phiên luyện tập.</p>
+          <div class="home-actions">
+            <button class="home-primary-action" type="button" onclick="window.startExamNow()">
+              <span class="emoji-pop">🚀</span>
+              <span>Bắt đầu làm bài</span>
+            </button>
+            <button class="home-secondary-action" type="button" onclick="document.getElementById('fileInput').click()">
+              <span class="emoji-pop">🔄</span>
+              <span>Đổi đề khác</span>
+            </button>
+          </div>
+        </div>
+        <div class="home-focus-panel">
+          <div class="focus-ring">
+            <span class="emoji-pulse">✅</span>
+          </div>
+          <div>
+            <span>Đang chọn</span>
+            <strong>${fileName}</strong>
+          </div>
+        </div>
+      </section>
     </div>
   `;
+  if (window.lucide) lucide.createIcons();
   await checkCurrentExamHistorySummary(fileName);
 }
 
@@ -497,7 +603,13 @@ window.startExamNow = async function () {
 
   document.getElementById("btnGradeHeader").style.display = "block";
   document.getElementById("btnGradeNav").style.display = "block";
+  const activeGrade = document.getElementById("btnActiveGrade");
+  if (activeGrade) activeGrade.style.display = "inline-flex";
   document.getElementById("examName").textContent = pendingData.name;
+  const activeExamName = document.getElementById("activeExamName");
+  if (activeExamName) activeExamName.textContent = pendingData.name;
+  const summaryEl = document.getElementById("examHistorySummary");
+  if (summaryEl) summaryEl.style.display = "none";
   setHeaderMode("active");
 
   generateQuiz();
@@ -513,7 +625,6 @@ window.startExamNow = async function () {
 
   document.getElementById("result").textContent = "";
   document.getElementById("topResult").style.display = "none";
-  checkCurrentExamHistorySummary(pendingData.name);
 };
 
 window.loadFileFromLocal = function () {
@@ -1272,7 +1383,8 @@ function generateQuiz() {
 
     let html = `
       <div class="question-header">
-        <span>CÂU ${index + 1}</span>
+        <span>📝 Câu ${index + 1}</span>
+        <small>${index + 1}/${questionsData.length}</small>
       </div>
       <div class="question-text">${q.question}</div>
       <div class="options">
@@ -1283,7 +1395,7 @@ function generateQuiz() {
         <div class="option-wrapper">
           <input type="radio" name="q${index}" value="${opt.replace(/"/g, '&quot;')}" id="q${index}_opt${i}" class="option-input" style="display:none">
           <label for="q${index}_opt${i}" class="option-label">
-            <span style="font-weight:700; min-width:25px; color:#3b82f6;">${letter}.</span>
+            <span class="option-label-marker">${letter}</span>
             <span>${opt}</span>
           </label>
         </div>`;
@@ -1314,7 +1426,12 @@ function generateQuiz() {
       inp.addEventListener("change", () => {
         // 1. Cập nhật menu bên phải
         const btn = document.querySelector(`.qnav-item[data-index="${index}"]`);
-        if (btn) btn.classList.add("nav-answered");
+        if (btn) {
+          btn.classList.add("nav-answered", "nav-active");
+          document.querySelectorAll(".qnav-item.nav-active").forEach((item) => {
+            if (item !== btn) item.classList.remove("nav-active");
+          });
+        }
 
         // 2. Cập nhật thanh tiến độ
         updateProgressBar();
@@ -1411,7 +1528,17 @@ function generateQuiz() {
     btn.dataset.index = i;
     btn.onclick = () => {
       const card = document.querySelector(`.question-card[data-index="${i}"]`);
-      if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.querySelectorAll(".qnav-item.nav-active").forEach((item) =>
+        item.classList.remove("nav-active")
+      );
+      btn.classList.add("nav-active");
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.classList.remove("active-highlight");
+        void card.offsetWidth;
+        card.classList.add("active-highlight");
+        setTimeout(() => card.classList.remove("active-highlight"), 1500);
+      }
       if (window.innerWidth <= 850) closeQuestionNav();
     };
     listEl.appendChild(btn);
@@ -1428,6 +1555,8 @@ function updateProgressBar() {
   const percent = (answered / total) * 100;
   const bar = document.getElementById("examProgressBar");
   if (bar) bar.style.width = `${percent}%`;
+  const activeBar = document.getElementById("activeProgressBar");
+  if (activeBar) activeBar.style.width = `${percent}%`;
 }
 
 function grade(autoSubmit) {
@@ -1439,6 +1568,8 @@ function grade(autoSubmit) {
 
   document.getElementById("btnGradeHeader").style.display = "none";
   document.getElementById("btnGradeNav").style.display = "none";
+  const activeGrade = document.getElementById("btnActiveGrade");
+  if (activeGrade) activeGrade.style.display = "none";
 
   let score = 0;
   document
@@ -1569,10 +1700,12 @@ window.resetExam = async function () {
     pendingData = null;
     questionsData = [];
     setHeaderMode("setup");
-    document.getElementById("quiz").innerHTML = "";
+    renderHomeScreen();
     document.getElementById("result").textContent = "";
     document.getElementById("btnGradeHeader").style.display = "none";
     document.getElementById("btnGradeNav").style.display = "none";
+    const activeGrade = document.getElementById("btnActiveGrade");
+    if (activeGrade) activeGrade.style.display = "inline-flex";
     updateFileStatus("", false);
     return;
   }
@@ -1591,12 +1724,7 @@ window.resetExam = async function () {
   pendingData = null;
   setHeaderMode("setup");
   updateFileStatus("", false);
-  document.getElementById("quiz").innerHTML = `
-    <div class="welcome-state">
-      <div class="welcome-icon">👋</div>
-      <h3>Sẵn sàng thử thách?</h3>
-      <p>Chọn đề thi, cài đặt thời gian và nhấn nút <b>Bắt đầu</b>.</p>
-    </div>`;
+  renderHomeScreen();
   document.getElementById("result").textContent = "";
   document.getElementById("topResult").style.display = "none";
   document.getElementById("examHistorySummary").style.display = "none";
@@ -1613,6 +1741,7 @@ auth.onAuthStateChanged((user) => {
   const avatar = document.getElementById("userAvatar");
 
   if (user) {
+    document.body.classList.add("logged-in");
     btnLogin.style.display = "none";
     userSection.style.display = "flex";
     avatar.src =
@@ -1622,6 +1751,7 @@ auth.onAuthStateChanged((user) => {
     syncKeysFromCloud(user);
     // ----------------------------------------
   } else {
+    document.body.classList.remove("logged-in");
     btnLogin.style.display = "block";
     userSection.style.display = "none";
   }
@@ -1640,10 +1770,12 @@ async function saveExamResult(score, total, percent, examName) {
   const details = questionsData.map((q, i) => {
     const sel = document.querySelector(`input[name="q${i}"]:checked`);
     return {
-      q: q.question,
-      u: sel ? sel.value : "",
-      a: q.answer || "",
-      s: sel && sel.value === (q.answer || ""),
+      q:    q.question,
+      u:    sel ? sel.value : "",
+      a:    q.answer  || "",
+      s:    sel && sel.value === (q.answer || ""),
+      opts: Array.isArray(q.options) ? q.options : [],
+      ex:   q.explain || "",
     };
   });
   try {
@@ -2524,6 +2656,10 @@ async function checkCurrentExamHistorySummary(examName) {
   const user = auth.currentUser;
   const summaryEl = document.getElementById("examHistorySummary");
   if (!summaryEl || !user || !examName) return;
+  if (document.body.classList.contains("exam-taking")) {
+    summaryEl.style.display = "none";
+    return;
+  }
   summaryEl.style.display = "none";
   await fetchHistoryData(user.uid);
   const myHist = globalHistoryData.filter(
@@ -2543,6 +2679,17 @@ async function checkCurrentExamHistorySummary(examName) {
 // EVENTS (SỰ KIỆN KHỞI CHẠY)
 // ========================
 document.addEventListener("DOMContentLoaded", () => {
+  document.body.classList.add("home-mode");
+  const timeInputEl = document.getElementById("timeInput");
+  if (timeInputEl) {
+    const syncTimePreview = () => {
+      const preview = document.getElementById("homeTimePreview");
+      if (preview) preview.textContent = timeInputEl.value || 15;
+    };
+    timeInputEl.addEventListener("input", syncTimePreview);
+    syncTimePreview();
+  }
+
   // 1. Gán sự kiện cho các nút cơ bản
   document.getElementById("fileInput").onchange = window.loadFileFromLocal;
   document.getElementById("btnSelectDrive").onclick =
@@ -2667,6 +2814,12 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   document.getElementById("btnGradeHeader").onclick = handleSubmission;
   document.getElementById("btnGradeNav").onclick = handleSubmission;
+  const btnActiveGrade = document.getElementById("btnActiveGrade");
+  if (btnActiveGrade) btnActiveGrade.onclick = handleSubmission;
+  const btnActiveReset = document.getElementById("btnActiveReset");
+  if (btnActiveReset) btnActiveReset.onclick = window.resetExam;
+  const btnActiveToggleNav = document.getElementById("btnActiveToggleNav");
+  if (btnActiveToggleNav) btnActiveToggleNav.onclick = window.openQuestionNav;
 
   // 5. Các sự kiện UI khác
   document.getElementById("btnViewHistory").onclick = window.showHistory;
@@ -3344,3 +3497,1240 @@ function updateGamificationUI() {
 auth.onAuthStateChanged((user) => {
   if (user) initGamification();
 });
+
+
+
+// ================================================================
+// EXAM REVIEW PAGE v5.0 — Viết lại hoàn toàn
+// ================================================================
+
+window.openExamReview = async function(historyId) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  // Ẩn modal lịch sử
+  const modal = document.getElementById('historyModal');
+  if (modal) modal.style.display = 'none';
+
+  // Hiện trang xem lại
+  const page = document.getElementById('examReviewPage');
+  page.style.display = 'flex';
+
+  // Reset header về trạng thái loading
+  document.getElementById('reviewPageExamName').textContent = 'Đang tải...';
+  document.getElementById('reviewPageDate').textContent = '';
+  const badge = document.getElementById('reviewPageScoreBadge');
+  badge.className = 'erp-score-pill';
+  badge.innerHTML = '';
+
+  // Hiện loading spinner
+  document.getElementById('examReviewContent').innerHTML = `
+    <div class="erp-loading">
+      <div class="erp-spinner"></div>
+      <span>Đang tải dữ liệu bài thi...</span>
+    </div>`;
+
+  // Lấy dữ liệu từ cache hoặc Firestore
+  let attempt = (globalHistoryData || []).find(h => h.id === historyId);
+  if (!attempt) {
+    try {
+      const snap = await db.collection('users').doc(user.uid)
+        .collection('history').doc(historyId).get();
+      if (snap.exists) attempt = { id: snap.id, ...snap.data() };
+    } catch (e) {
+      document.getElementById('examReviewContent').innerHTML = `
+        <div class="erp-empty">
+          <span class="erp-empty__icon">⚠️</span>
+          <p class="erp-empty__title">Lỗi tải dữ liệu</p>
+          <p class="erp-empty__desc">Kiểm tra kết nối mạng và thử lại.</p>
+        </div>`;
+      return;
+    }
+  }
+  if (!attempt) {
+    document.getElementById('examReviewContent').innerHTML = `
+      <div class="erp-empty">
+        <span class="erp-empty__icon">📭</span>
+        <p class="erp-empty__title">Không tìm thấy bài thi</p>
+        <p class="erp-empty__desc">Bài thi này có thể đã bị xóa.</p>
+      </div>`;
+    return;
+  }
+
+  // ── Cập nhật header ──
+  document.getElementById('reviewPageExamName').textContent = attempt.examName || 'Bài thi';
+  document.getElementById('reviewPageDate').textContent = '📅 ' + (attempt.dateStr || '');
+
+  const p = attempt.percent || 0;
+  const gradeClass = p >= 80 ? 'grade-great' : p >= 50 ? 'grade-ok' : 'grade-bad';
+  const gradeLabel = p >= 90 ? 'Xuất sắc' : p >= 80 ? 'Giỏi' : p >= 60 ? 'Khá' : p >= 50 ? 'Trung bình' : 'Cần cố gắng';
+  badge.className = 'erp-score-pill ' + gradeClass;
+  badge.innerHTML = `
+    <span class="erp-score-pill__num">${attempt.score}/${attempt.total}</span>
+    <span class="erp-score-pill__meta">
+      <span class="erp-score-pill__pct">${p}%</span>
+      <span class="erp-score-pill__lbl">${gradeLabel}</span>
+    </span>`;
+
+  // ── Thống kê ──
+  const details = attempt.details || [];
+  const cntOk   = details.filter(q => q.s).length;
+  const cntBad  = details.filter(q => !q.s && q.u).length;
+  const cntSkip = details.filter(q => !q.u).length;
+
+  // ── Store cho AI ──
+  window.reviewQuestionStore = {};
+
+  // ── Render từng câu hỏi ──
+  let cardsHtml = '';
+
+  if (!details.length) {
+    cardsHtml = `
+      <div class="erp-empty">
+        <span class="erp-empty__icon">📋</span>
+        <p class="erp-empty__title">Không có dữ liệu chi tiết</p>
+        <p class="erp-empty__desc">Bài thi này chưa lưu dữ liệu từng câu.<br>Hãy làm lại để xem kết quả đầy đủ.</p>
+      </div>`;
+  } else {
+    details.forEach((q, i) => {
+      const key = i + '_' + historyId.substring(0, 8);
+      window.reviewQuestionStore[key] = q;
+
+      const ok    = !!q.s;
+      const skip  = !q.u;
+      const mod   = skip ? 'erp-card--skip' : ok ? 'erp-card--ok' : 'erp-card--bad';
+      const label = skip ? 'Bỏ trống' : ok ? 'Đúng ✓' : 'Sai ✗';
+
+      const opts = q.opts || [];
+      const ans  = (q.a || '').trim();
+      const sel  = (q.u || '').trim();
+
+      // Render options
+      let optsHtml = '';
+      if (opts.length > 0) {
+        optsHtml = '<div class="erp-options">';
+        opts.forEach((opt, oi) => {
+          const letter  = String.fromCharCode(65 + oi);
+          const isAns   = opt.trim() === ans || letter === ans;
+          const isSel   = opt.trim() === sel  || letter === sel;
+          const isBad   = isSel && !isAns;
+
+          let cls = '', keyContent = letter, labelHtml = '';
+          if (isAns && isSel) {
+            cls = 'erp-opt--ok';
+            keyContent = '✓';
+            labelHtml = `<span class="erp-opt__label">Đúng ✓</span>`;
+          } else if (isAns) {
+            cls = 'erp-opt--ok';
+            keyContent = '✓';
+            labelHtml = `<span class="erp-opt__label">Đáp án đúng</span>`;
+          } else if (isBad) {
+            cls = 'erp-opt--bad';
+            keyContent = '✗';
+            labelHtml = `<span class="erp-opt__label">Bạn chọn</span>`;
+          }
+
+          optsHtml += `
+            <div class="erp-opt ${cls}">
+              <span class="erp-opt__key">${keyContent}</span>
+              <span class="erp-opt__text">${opt}</span>
+              ${labelHtml}
+            </div>`;
+        });
+        optsHtml += '</div>';
+
+      } else if (sel || ans) {
+        // Không có options array — hiển thị dạng text
+        optsHtml = '<div class="erp-options">';
+        if (sel) {
+          const cls = ok ? 'erp-opt--ok' : 'erp-opt--bad';
+          const icon = ok ? '✓' : '✗';
+          optsHtml += `<div class="erp-opt ${cls}"><span class="erp-opt__key">${icon}</span><span class="erp-opt__text">Bạn chọn: <b>${sel}</b></span></div>`;
+        }
+        if (!ok && ans) {
+          optsHtml += `<div class="erp-opt erp-opt--ok"><span class="erp-opt__key">✓</span><span class="erp-opt__text">Đáp án đúng: <b>${ans}</b></span></div>`;
+        }
+        optsHtml += '</div>';
+      }
+
+      const explainHtml = q.ex
+        ? `<div class="erp-explain"><span class="erp-explain__bulb">💡</span><span class="erp-explain__text"><b>Giải thích:</b> ${q.ex}</span></div>`
+        : '';
+
+      cardsHtml += `
+        <div class="erp-card ${mod}">
+          <div class="erp-card__strip"></div>
+          <div class="erp-card__body">
+            <div class="erp-card__row">
+              <div class="erp-card__idx">${i + 1}</div>
+              <div class="erp-card__q">${q.q}</div>
+              <span class="erp-card__tag">${label}</span>
+            </div>
+            ${optsHtml}
+            ${explainHtml}
+            <button class="erp-ai-btn" onclick="window.openAIFromReviewByKey('${key}')">🧠 Hỏi Gia sư AI</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  document.getElementById('examReviewContent').innerHTML = `
+    <div class="erp-chips">
+      <div class="erp-chip erp-chip--ok">
+        <div class="erp-chip__dot">✓</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${cntOk}</span>
+          <span class="erp-chip__txt">Chính xác</span>
+        </div>
+      </div>
+      <div class="erp-chip erp-chip--bad">
+        <div class="erp-chip__dot">✗</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${cntBad}</span>
+          <span class="erp-chip__txt">Sai</span>
+        </div>
+      </div>
+      <div class="erp-chip erp-chip--skip">
+        <div class="erp-chip__dot">–</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${cntSkip}</span>
+          <span class="erp-chip__txt">Bỏ trống</span>
+        </div>
+      </div>
+      <div class="erp-chip erp-chip--all">
+        <div class="erp-chip__dot">Σ</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${details.length}</span>
+          <span class="erp-chip__txt">Tổng câu</span>
+        </div>
+      </div>
+    </div>
+    ${details.length ? '<p class="erp-section-label">Danh sách câu hỏi</p>' : ''}
+    ${cardsHtml}`;
+
+  document.getElementById('examReviewContent').parentElement.scrollTop = 0;
+};
+
+// ── Đóng trang xem lại ──
+window.closeExamReviewPage = function() {
+  document.getElementById('examReviewPage').style.display = 'none';
+  window.showHistory();
+};
+
+// ── Mở AI Gia sư từ trang xem lại ──
+window.openAIFromReviewByKey = function(key) {
+  const q = window.reviewQuestionStore && window.reviewQuestionStore[key];
+  if (!q) { console.warn('reviewStore key not found:', key); return; }
+  const idx = parseInt(key.split('_')[0], 10);
+  const backup = questionsData.slice();
+  if (questionsData.length <= idx) questionsData.length = idx + 1;
+  questionsData[idx] = {
+    question: q.q || '',
+    options:  q.opts || [],
+    answer:   q.a   || '',
+    explain:  q.ex  || ''
+  };
+  window.askAIForQuestion(idx);
+  setTimeout(() => {
+    for (let i = 0; i < backup.length; i++) questionsData[i] = backup[i];
+    questionsData.length = backup.length;
+  }, 500);
+};
+
+// ── Mở xem lại từ trong modal ──
+window.openExamReviewFromModal = function(historyId) {
+  const m = document.getElementById('historyModal');
+  if (m) m.style.display = 'none';
+  window.openExamReview(historyId);
+};
+
+// ── Mở modal lịch sử (tab Timeline mặc định) ──
+window.showHistory = async function() {
+  const user = auth.currentUser;
+  if (!user) {
+    cloudAlert({ title: 'Yêu cầu đăng nhập', message: 'Vui lòng đăng nhập để xem lịch sử.', icon: '🔐' });
+    return;
+  }
+  const modal = document.getElementById('historyModal');
+  modal.style.display = 'flex';
+  document.getElementById('statsList').innerHTML = `<p style="text-align:center;padding:20px">⏳ Đang tải...</p>`;
+  document.getElementById('aiResultBox').style.display = 'none';
+  document.getElementById('historyOverview').style.display = 'none';
+  document.getElementById('chartContainer').style.display = 'none';
+  window.switchHistoryTab('timeline');
+
+  let targetExamName = null;
+  if (document.getElementById('statusPanel').style.display !== 'none') {
+    targetExamName = document.getElementById('examName').textContent;
+  } else if (typeof pendingData !== 'undefined' && pendingData) {
+    targetExamName = pendingData.name;
+  }
+
+  if (!globalHistoryData.length) await fetchHistoryData(user.uid);
+
+  if (targetExamName) {
+    document.getElementById('filterArea').style.display = 'none';
+    document.getElementById('currentExamLabel').style.display = 'none';
+    document.getElementById('historyModalTitle').textContent = targetExamName;
+    document.getElementById('historyOverview').style.display = 'flex';
+    renderOverview(targetExamName, globalHistoryData);
+    renderChart(targetExamName, globalHistoryData);
+    renderStats(targetExamName);
+    window.renderTimeline(targetExamName);
+  } else {
+    document.getElementById('historyModalTitle').textContent = 'Hồ sơ học tập chung';
+    document.getElementById('filterArea').style.display = 'flex';
+    initStatsFilter();
+    renderStats('all');
+    window.renderTimeline('all');
+  }
+};
+
+// ── Timeline với nút Xem lại ──
+window.renderTimeline = function(filterName) {
+  const list = document.getElementById('timelineList');
+  if (!list) return;
+  let data = globalHistoryData || [];
+  if (filterName && filterName !== 'all') {
+    data = data.filter(i => i.examName === filterName || i.examName.includes(filterName));
+  }
+  if (!data.length) {
+    list.innerHTML = `<p style="text-align:center;padding:24px;color:var(--text-muted,#64748b);">Chưa có lịch sử làm bài nào.</p>`;
+    return;
+  }
+  let html = '';
+  data.forEach(d => {
+    const c = d.percent >= 80 ? '#16a34a' : d.percent >= 50 ? '#d97706' : '#dc2626';
+    let dHtml = '';
+    if (d.details && d.details.length) {
+      dHtml = d.details.map((q, idx) => `
+        <div class="hist-q-item ${q.s ? 'hist-correct' : 'hist-wrong'}">
+          <div class="hist-q-text"><span style="font-weight:700;color:${q.s ? '#16a34a' : '#dc2626'}">Câu ${idx + 1}:</span> ${q.q}</div>
+          <div class="hist-user-ans">${q.s ? '✅' : '❌'} Bạn chọn: <b>${q.u || '(Bỏ trống)'}</b></div>
+          ${!q.s ? `<div class="hist-correct-ans">👉 Đáp án đúng: <b>${q.a}</b></div>` : ''}
+        </div>`).join('');
+    }
+    html += `
+      <div class="history-card-wrapper" id="card-${d.id}">
+        <div class="history-summary" onclick="window.toggleHistoryDetail('${d.id}')">
+          <div class="hist-left">
+            <div class="hist-name">${d.examName}</div>
+            <div class="hist-date">${d.dateStr}</div>
+          </div>
+          <div class="hist-right">
+            <div style="text-align:right;margin-right:8px;">
+              <div class="hist-score" style="color:${c}">${d.score}/${d.total}</div>
+              <div class="hist-percent" style="background:${c}">${d.percent}%</div>
+            </div>
+            <button class="btn-review-timeline"
+              onclick="event.stopPropagation();window.openExamReviewFromModal('${d.id}')"
+              title="Xem lại toàn bộ đáp án">📋 Xem lại</button>
+            <div class="hist-arrow">▼</div>
+          </div>
+        </div>
+        <div id="detail-${d.id}" class="history-details-box" style="display:none;">
+          ${dHtml || `<p style="padding:12px;text-align:center;color:#64748b;">Không có dữ liệu chi tiết.</p>`}
+        </div>
+      </div>`;
+  });
+  list.innerHTML = html;
+};
+
+// ── Filter stats ──
+window.filterStats = function() {
+  const val = document.getElementById('statsFilter').value;
+  renderStats(val);
+  window.renderTimeline(val);
+};
+
+
+// ================================================================
+// FIX: openAIFromReviewByKey — Đảm bảo AI hoạt động từ Review Page
+// ================================================================
+window.openAIFromReviewByKey = function(key) {
+  if (!key) { console.warn('[Review AI] key is empty'); return; }
+
+  const store = window.reviewQuestionStore;
+  if (!store || !store[key]) {
+    console.warn('[Review AI] key not found in store:', key, 'available:', Object.keys(store || {}));
+    cloudAlert({ title: 'Lỗi', message: 'Không tìm thấy dữ liệu câu hỏi. Vui lòng thử lại.', icon: '⚠️' });
+    return;
+  }
+
+  const q = store[key];
+  const idx = parseInt(key.split('_')[0], 10);
+  if (isNaN(idx)) { console.warn('[Review AI] invalid index from key:', key); return; }
+
+  // Set questionsData[idx] để askAIForQuestion đọc
+  // Không backup/restore vì askAIForQuestion đọc q ngay synchronously ở dòng đầu
+  const prevLen = questionsData.length;
+  const prevItem = questionsData[idx];
+
+  if (questionsData.length <= idx) {
+    questionsData.length = idx + 1;
+  }
+  questionsData[idx] = {
+    question: q.q   || '',
+    options:  q.opts || [],
+    answer:   q.a   || '',
+    explain:  q.ex  || ''
+  };
+
+  console.log('[Review AI] Opening AI for idx:', idx, 'q:', q.q && q.q.substring(0, 50));
+
+  // Gọi AI — function này sync đọc questionsData[idx] ngay lập tức
+  window.askAIForQuestion(idx);
+
+  // Restore sau 2s (đủ để AI đọc và bắt đầu request)
+  setTimeout(() => {
+    if (prevItem !== undefined) {
+      questionsData[idx] = prevItem;
+    } else if (questionsData.length > prevLen) {
+      questionsData.length = prevLen;
+    }
+  }, 2000);
+};
+
+
+// ================================================================
+// AI CHAT MODAL — Hội thoại với AI, lưu lịch sử theo câu hỏi
+// ================================================================
+
+// ── State ──
+window._aiChat = {
+  qKey: null,      // Firestore key (hash của câu hỏi)
+  qData: null,     // { question, options, answer, explain }
+  messages: [],    // [{ role:'user'|'assistant', text, time }]
+  loading: false,
+  abortCtrl: null
+};
+
+// ── Mở chat modal từ Review Page ──
+window.openAIFromReviewByKey = async function(key) {
+  const store = window.reviewQuestionStore;
+  if (!store || !store[key]) {
+    cloudAlert({ title: 'Lỗi', message: 'Không tìm thấy dữ liệu câu hỏi.', icon: '⚠️' });
+    return;
+  }
+  const q = store[key];
+  const qData = {
+    question: q.q    || '',
+    options:  q.opts || [],
+    answer:   q.a    || '',
+    explain:  q.ex   || ''
+  };
+  const qKey = getSmartKey(qData.question);
+  window.openAIChatModal(qKey, qData);
+};
+
+// ── Mở chat modal (có thể gọi từ bất kỳ đâu) ──
+window.openAIChatModal = async function(qKey, qData) {
+  window._aiChat.qKey   = qKey;
+  window._aiChat.qData  = qData;
+  window._aiChat.loading = false;
+
+  const modal = document.getElementById('aiChatModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  // Hiển thị câu hỏi ở header
+  document.getElementById('aiChatQuestion').textContent = qData.question;
+
+  // Load lịch sử từ Firestore
+  await window._loadAIChatHistory(qKey);
+  window._renderAIChat();
+
+  // Focus vào input
+  setTimeout(() => document.getElementById('aiChatInput').focus(), 100);
+};
+
+// ── Đóng modal ──
+window.closeAIChatModal = function() {
+  if (window._aiChat.abortCtrl) window._aiChat.abortCtrl.abort();
+  document.getElementById('aiChatModal').style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+// ── Load lịch sử từ Firestore ──
+window._loadAIChatHistory = async function(qKey) {
+  window._aiChat.messages = [];
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+    const doc = await db.collection('users').doc(user.uid)
+      .collection('ai_chat_history').doc(qKey).get();
+    if (doc.exists && doc.data().messages) {
+      window._aiChat.messages = doc.data().messages;
+    }
+  } catch(e) {
+    console.warn('[AIChatModal] Load history error:', e);
+  }
+};
+
+// ── Lưu lịch sử vào Firestore ──
+window._saveAIChatHistory = async function() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const qKey = window._aiChat.qKey;
+  if (!qKey) return;
+  try {
+    await db.collection('users').doc(user.uid)
+      .collection('ai_chat_history').doc(qKey).set({
+        question: window._aiChat.qData.question,
+        messages: window._aiChat.messages,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+  } catch(e) {
+    console.warn('[AIChatModal] Save history error:', e);
+  }
+};
+
+// ── Render toàn bộ messages ──
+window._renderAIChat = function() {
+  const body = document.getElementById('aiChatBody');
+  if (!body) return;
+  const msgs = window._aiChat.messages;
+
+  if (!msgs.length) {
+    body.innerHTML = `
+      <div class="aic-empty">
+        <span>🧠</span>
+        <p>Chào bạn! Tôi là Gia sư AI.</p>
+        <p>Hãy hỏi bất cứ điều gì về câu hỏi này.</p>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = msgs.map((m, i) => {
+    const isUser = m.role === 'user';
+    const timeStr = m.time ? new Date(m.time).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' }) : '';
+    return `
+      <div class="aic-msg ${isUser ? 'aic-msg--user' : 'aic-msg--ai'}">
+        ${!isUser ? '<div class="aic-avatar">🧠</div>' : ''}
+        <div class="aic-bubble">
+          <div class="aic-bubble__text">${m.role === 'assistant' ? m.text : escapeHtml(m.text)}</div>
+          ${timeStr ? `<div class="aic-bubble__time">${timeStr}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  // Scroll to bottom
+  body.scrollTop = body.scrollHeight;
+};
+
+// ── Escape HTML cho user messages ──
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── Gửi tin nhắn ──
+window.sendAIChatMessage = async function() {
+  if (window._aiChat.loading) return;
+
+  const input = document.getElementById('aiChatInput');
+  const text  = (input.value || '').trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  const qData = window._aiChat.qData;
+  const now   = Date.now();
+
+  // Thêm tin nhắn người dùng
+  window._aiChat.messages.push({ role: 'user', text, time: now });
+  window._renderAIChat();
+
+  // Hiện loading bubble
+  window._aiChat.loading = true;
+  window._showAITyping();
+  document.getElementById('aiChatSendBtn').disabled = true;
+
+  // Build context prompt cho AI
+  const optsList = (qData.options || []).map((o,i) => `${String.fromCharCode(65+i)}. ${o}`).join('\n');
+  const history  = window._aiChat.messages.slice(0, -1); // Không bao gồm tin vừa gửi
+
+  // Build conversation history cho AI (tối đa 10 turns gần nhất)
+  const recentHistory = history.slice(-10);
+  let historyText = '';
+  recentHistory.forEach(m => {
+    if (m.role === 'user')      historyText += `Học sinh: ${m.text}\n`;
+    else if (m.role === 'assistant') historyText += `Gia sư AI: ${m.text.replace(/<[^>]+>/g,'')}\n`;
+  });
+
+  const systemContext = `Bạn là Gia sư AI thông minh, giải thích câu hỏi trắc nghiệm ngắn gọn, dễ hiểu, thân thiện.
+
+Câu hỏi đang thảo luận:
+"${qData.question}"
+${optsList ? `\nCác lựa chọn:\n${optsList}` : ''}
+${qData.answer ? `\nĐáp án đúng: ${qData.answer}` : ''}
+${qData.explain ? `\nGiải thích gốc: ${qData.explain}` : ''}
+
+${historyText ? `Lịch sử hội thoại:\n${historyText}` : ''}
+Học sinh vừa hỏi: ${text}
+
+Hãy trả lời trực tiếp, ngắn gọn (dưới 300 từ), dùng markdown nếu cần. Không lặp lại câu hỏi.`;
+
+  try {
+    // Abort controller riêng cho chat
+    window._aiChat.abortCtrl = new AbortController();
+    const result = await callAI(systemContext, window._aiChat.abortCtrl.signal);
+
+    if (result && result.text) {
+      // Convert markdown sang HTML đơn giản
+      const html = result.text
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code style="background:rgba(0,0,0,.08);padding:1px 5px;border-radius:4px;font-size:13px">$1</code>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+      const htmlWrapped = `<p>${html}</p>`;
+
+      window._aiChat.messages.push({ role: 'assistant', text: htmlWrapped, time: Date.now() });
+      await window._saveAIChatHistory();
+    } else {
+      window._aiChat.messages.push({
+        role: 'assistant',
+        text: '<p style="color:#dc2626">Xin lỗi, có lỗi xảy ra. Vui lòng thử lại.</p>',
+        time: Date.now()
+      });
+    }
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      window._aiChat.messages.push({
+        role: 'assistant',
+        text: `<p style="color:#dc2626">Lỗi: ${e.message}</p>`,
+        time: Date.now()
+      });
+    }
+  }
+
+  window._aiChat.loading = false;
+  document.getElementById('aiChatSendBtn').disabled = false;
+  window._renderAIChat();
+  document.getElementById('aiChatInput').focus();
+};
+
+// ── Hiện typing indicator ──
+window._showAITyping = function() {
+  const body = document.getElementById('aiChatBody');
+  if (!body) return;
+  const typing = document.createElement('div');
+  typing.className = 'aic-msg aic-msg--ai aic-typing';
+  typing.innerHTML = `
+    <div class="aic-avatar">🧠</div>
+    <div class="aic-bubble">
+      <div class="aic-typing-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>`;
+  body.appendChild(typing);
+  body.scrollTop = body.scrollHeight;
+};
+
+// ── Xoá lịch sử hội thoại ──
+window.clearAIChatHistory = async function() {
+  const ok = await cloudAlert({
+    type: 'confirm', icon: '🗑️',
+    title: 'Xoá lịch sử',
+    message: 'Bạn có chắc muốn xoá toàn bộ lịch sử hội thoại cho câu này?',
+    confirmText: 'Xoá', cancelText: 'Huỷ'
+  });
+  if (!ok) return;
+
+  window._aiChat.messages = [];
+  const user = auth.currentUser;
+  if (user && window._aiChat.qKey) {
+    try {
+      await db.collection('users').doc(user.uid)
+        .collection('ai_chat_history').doc(window._aiChat.qKey).delete();
+    } catch(e) { console.warn(e); }
+  }
+  window._renderAIChat();
+};
+
+// ── Enter để gửi (Shift+Enter để xuống dòng) ──
+window._aiChatKeydown = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    window.sendAIChatMessage();
+  }
+};
+
+// ── Auto-resize textarea ──
+window._aiChatInput = function(e) {
+  const el = e.target;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+};
+
+
+// ================================================================
+// AI CHAT MODAL v2 — Tự động giải thích khi mở, hỏi thêm thoải mái
+// ================================================================
+
+window._aiChat = {
+  qKey: null,
+  qData: null,
+  messages: [],
+  loading: false,
+  abortCtrl: null
+};
+
+// ── Mở từ Review Page ──
+window.openAIFromReviewByKey = async function(key) {
+  const store = window.reviewQuestionStore;
+  if (!store || !store[key]) {
+    cloudAlert({ title: 'Lỗi', message: 'Không tìm thấy dữ liệu câu hỏi.', icon: '⚠️' });
+    return;
+  }
+  const q = store[key];
+  window.openAIChatModal(getSmartKey(q.q || ''), {
+    question: q.q    || '',
+    options:  q.opts || [],
+    answer:   q.a    || '',
+    explain:  q.ex   || ''
+  });
+};
+
+// ── Mở modal ──
+window.openAIChatModal = async function(qKey, qData) {
+  window._aiChat.qKey    = qKey;
+  window._aiChat.qData   = qData;
+  window._aiChat.loading = false;
+
+  const modal = document.getElementById('aiChatModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  document.getElementById('aiChatQuestion').textContent = qData.question;
+
+  // Load lịch sử từ Firestore
+  await window._loadAIChatHistory(qKey);
+
+  // Nếu chưa có lịch sử → AI tự động giải thích ngay
+  if (window._aiChat.messages.length === 0) {
+    window._renderAIChat();
+    await window._autoExplain();
+  } else {
+    window._renderAIChat();
+  }
+
+  setTimeout(() => document.getElementById('aiChatInput').focus(), 200);
+};
+
+// ── AI tự động giải thích câu hỏi lần đầu ──
+window._autoExplain = async function() {
+  const qData = window._aiChat.qData;
+  window._aiChat.loading = true;
+  window._showAITyping();
+  document.getElementById('aiChatSendBtn').disabled = true;
+
+  const optsList = (qData.options || [])
+    .map((o, i) => `  ${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+
+  // ── PROMPT CHUẨN cho lần giải thích đầu tiên ──
+  const prompt = `Bạn là Gia sư AI chuyên luyện thi thông minh, nhiệt tình và dễ hiểu.
+
+Câu hỏi trắc nghiệm:
+"${qData.question}"
+${optsList ? `\nCác lựa chọn:\n${optsList}` : ''}
+${qData.answer ? `\nĐáp án đúng: ${qData.answer}` : ''}
+${qData.explain ? `\nGiải thích tham khảo: ${qData.explain}` : ''}
+
+Hãy giải thích câu hỏi này theo cấu trúc sau (ngắn gọn, súc tích, dễ hiểu):
+
+**Đáp án đúng:** [Nêu đáp án]
+
+**Tại sao đúng:** [Giải thích lý do ngắn gọn, rõ ràng, có thể dùng ví dụ thực tế nếu phù hợp]
+
+**Tại sao các đáp án khác sai:** [Chỉ ra điểm sai của từng lựa chọn sai — nếu có options]
+
+**Ghi nhớ nhanh:** [Một câu mẹo hoặc từ khóa giúp nhớ lâu]
+
+Viết bằng tiếng Việt, thân thiện như gia sư dạy kèm, không dài dòng.`;
+
+  try {
+    if (window._aiChat.abortCtrl) window._aiChat.abortCtrl.abort();
+    window._aiChat.abortCtrl = new AbortController();
+    const result = await callAI(prompt, window._aiChat.abortCtrl.signal);
+
+    if (result && result.text) {
+      window._aiChat.messages.push({
+        role: 'assistant',
+        text: window._mdToHtml(result.text),
+        time: Date.now()
+      });
+      await window._saveAIChatHistory();
+    } else {
+      window._aiChat.messages.push({
+        role: 'assistant',
+        text: '<p>Xin lỗi, có lỗi khi tải giải thích. Bạn có thể hỏi trực tiếp bên dưới.</p>',
+        time: Date.now()
+      });
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      window._aiChat.messages.push({
+        role: 'assistant',
+        text: `<p style="color:#dc2626">Lỗi kết nối: ${e.message}</p>`,
+        time: Date.now()
+      });
+    }
+  }
+
+  window._aiChat.loading = false;
+  document.getElementById('aiChatSendBtn').disabled = false;
+  window._renderAIChat();
+};
+
+// ── Gửi câu hỏi tiếp theo ──
+window.sendAIChatMessage = async function() {
+  if (window._aiChat.loading) return;
+  const input = document.getElementById('aiChatInput');
+  const text  = (input.value || '').trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  window._aiChat.messages.push({ role: 'user', text, time: Date.now() });
+  window._renderAIChat();
+  window._aiChat.loading = true;
+  window._showAITyping();
+  document.getElementById('aiChatSendBtn').disabled = true;
+
+  const qData = window._aiChat.qData;
+  const optsList = (qData.options || [])
+    .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+
+  // ── PROMPT cho câu hỏi tiếp theo (kèm ngữ cảnh) ──
+  const recentMsgs = window._aiChat.messages.slice(-8); // 8 tin gần nhất
+  let historyText = '';
+  recentMsgs.slice(0, -1).forEach(m => {
+    const clean = m.text.replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    if (m.role === 'user')      historyText += `Học sinh: ${clean}\n\n`;
+    else if (m.role === 'assistant') historyText += `Gia sư AI: ${clean}\n\n`;
+  });
+
+  const prompt = `Bạn là Gia sư AI đang giải đáp thắc mắc về câu hỏi trắc nghiệm.
+
+Câu hỏi gốc: "${qData.question}"
+${optsList ? `Các lựa chọn:\n${optsList}` : ''}
+${qData.answer ? `Đáp án đúng: ${qData.answer}` : ''}
+
+${historyText ? `Hội thoại trước:\n${historyText}` : ''}Học sinh vừa hỏi thêm: "${text}"
+
+Hãy trả lời trực tiếp, ngắn gọn (tối đa 200 từ), đúng trọng tâm câu hỏi. Dùng **in đậm** cho từ khóa quan trọng. Tiếng Việt tự nhiên, thân thiện.`;
+
+  try {
+    if (window._aiChat.abortCtrl) window._aiChat.abortCtrl.abort();
+    window._aiChat.abortCtrl = new AbortController();
+    const result = await callAI(prompt, window._aiChat.abortCtrl.signal);
+
+    window._aiChat.messages.push({
+      role: 'assistant',
+      text: result && result.text
+        ? window._mdToHtml(result.text)
+        : '<p style="color:#dc2626">Có lỗi xảy ra. Vui lòng thử lại.</p>',
+      time: Date.now()
+    });
+    await window._saveAIChatHistory();
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      window._aiChat.messages.push({
+        role: 'assistant',
+        text: `<p style="color:#dc2626">Lỗi: ${e.message}</p>`,
+        time: Date.now()
+      });
+    }
+  }
+
+  window._aiChat.loading = false;
+  document.getElementById('aiChatSendBtn').disabled = false;
+  window._renderAIChat();
+  document.getElementById('aiChatInput').focus();
+};
+
+// ── Chuyển Markdown đơn giản → HTML ──
+window._mdToHtml = function(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')  // escape trước
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code class="aic-code">$1</code>')
+    .replace(/^### (.+)$/gm, '<h4 class="aic-h4">$1</h4>')
+    .replace(/^## (.+)$/gm,  '<h3 class="aic-h3">$1</h3>')
+    .replace(/^# (.+)$/gm,   '<h2 class="aic-h2">$1</h2>')
+    .replace(/^\* (.+)$/gm,  '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, s => `<ul class="aic-ul">${s}</ul>`)
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^(?!<[hup])(.+)$/, '<p>$1</p>')
+    .replace(/^<\/p><p>/, '')
+    .replace(/<p><\/p>/g, '');
+};
+
+// ── Render messages ──
+window._renderAIChat = function() {
+  const body = document.getElementById('aiChatBody');
+  if (!body) return;
+  // Xoa typing indicator
+  body.querySelectorAll('.aic-typing').forEach(el => el.remove());
+
+  const msgs = window._aiChat.messages;
+  if (!msgs.length) {
+    body.innerHTML = `
+      <div class="aic-empty">
+        <span>🧠</span>
+        <p>Đang chuẩn bị giải thích...</p>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = msgs.map(m => {
+    const isUser = m.role === 'user';
+    const timeStr = m.time
+      ? new Date(m.time).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const textHtml = isUser
+      ? m.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+      : m.text;
+    return `
+      <div class="aic-msg ${isUser ? 'aic-msg--user' : 'aic-msg--ai'}">
+        ${!isUser ? '<div class="aic-avatar">🧠</div>' : ''}
+        <div class="aic-bubble">
+          <div class="aic-bubble__text">${textHtml}</div>
+          ${timeStr ? `<div class="aic-bubble__time">${timeStr}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  body.scrollTop = body.scrollHeight;
+};
+
+// ── Typing indicator ──
+window._showAITyping = function() {
+  const body = document.getElementById('aiChatBody');
+  if (!body) return;
+  body.querySelectorAll('.aic-typing').forEach(el => el.remove());
+  const el = document.createElement('div');
+  el.className = 'aic-msg aic-msg--ai aic-typing';
+  el.innerHTML = `
+    <div class="aic-avatar">🧠</div>
+    <div class="aic-bubble">
+      <div class="aic-bubble__text">
+        <div class="aic-typing-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>`;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+};
+
+// ── Load / Save Firestore ──
+window._loadAIChatHistory = async function(qKey) {
+  window._aiChat.messages = [];
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+    const doc = await db.collection('users').doc(user.uid)
+      .collection('ai_chat_history').doc(qKey).get();
+    if (doc.exists && Array.isArray(doc.data().messages)) {
+      window._aiChat.messages = doc.data().messages;
+    }
+  } catch(e) { console.warn('[AIChatModal] load:', e); }
+};
+
+window._saveAIChatHistory = async function() {
+  const user = auth.currentUser;
+  if (!user || !window._aiChat.qKey) return;
+  try {
+    await db.collection('users').doc(user.uid)
+      .collection('ai_chat_history').doc(window._aiChat.qKey).set({
+        question:  window._aiChat.qData.question,
+        messages:  window._aiChat.messages,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+  } catch(e) { console.warn('[AIChatModal] save:', e); }
+};
+
+// ── Đóng modal ──
+window.closeAIChatModal = function() {
+  if (window._aiChat.abortCtrl) window._aiChat.abortCtrl.abort();
+  document.getElementById('aiChatModal').style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+// ── Xoá lịch sử ──
+window.clearAIChatHistory = async function() {
+  const ok = await cloudAlert({
+    type: 'confirm', icon: '🗑️',
+    title: 'Xoá lịch sử hội thoại',
+    message: 'Toàn bộ hội thoại với câu này sẽ bị xoá. Lần sau mở lại AI sẽ giải thích lại từ đầu.',
+    confirmText: 'Xoá', cancelText: 'Huỷ'
+  });
+  if (!ok) return;
+  window._aiChat.messages = [];
+  const user = auth.currentUser;
+  if (user && window._aiChat.qKey) {
+    try {
+      await db.collection('users').doc(user.uid)
+        .collection('ai_chat_history').doc(window._aiChat.qKey).delete();
+    } catch(e) { console.warn(e); }
+  }
+  window._renderAIChat();
+  // Tự động giải thích lại
+  await window._autoExplain();
+};
+
+// ── Input handlers ──
+window._aiChatKeydown = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    window.sendAIChatMessage();
+  }
+};
+window._aiChatInput = function(e) {
+  const el = e.target;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+};
+
+
+// ================================================================
+// FIX: openExamReview — Logic so sánh đáp án chắc chắn hơn
+// ================================================================
+window.openExamReview = async function(historyId) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const modal = document.getElementById('historyModal');
+  if (modal) modal.style.display = 'none';
+
+  const page = document.getElementById('examReviewPage');
+  page.style.display = 'flex';
+
+  document.getElementById('reviewPageExamName').textContent = 'Đang tải...';
+  document.getElementById('reviewPageDate').textContent = '';
+  const badge = document.getElementById('reviewPageScoreBadge');
+  badge.className = 'erp-score-pill';
+  badge.innerHTML = '';
+
+  document.getElementById('examReviewContent').innerHTML = `
+    <div class="erp-loading">
+      <div class="erp-spinner"></div>
+      <span>Đang tải dữ liệu bài thi...</span>
+    </div>`;
+
+  let attempt = (globalHistoryData || []).find(h => h.id === historyId);
+  if (!attempt) {
+    try {
+      const snap = await db.collection('users').doc(user.uid)
+        .collection('history').doc(historyId).get();
+      if (snap.exists) attempt = { id: snap.id, ...snap.data() };
+    } catch (e) {
+      document.getElementById('examReviewContent').innerHTML = `
+        <div class="erp-empty">
+          <span class="erp-empty__icon">⚠️</span>
+          <p class="erp-empty__title">Lỗi tải dữ liệu</p>
+          <p class="erp-empty__desc">Kiểm tra kết nối mạng và thử lại.</p>
+        </div>`;
+      return;
+    }
+  }
+  if (!attempt) {
+    document.getElementById('examReviewContent').innerHTML = `
+      <div class="erp-empty">
+        <span class="erp-empty__icon">📭</span>
+        <p class="erp-empty__title">Không tìm thấy bài thi</p>
+        <p class="erp-empty__desc">Bài thi này có thể đã bị xóa.</p>
+      </div>`;
+    return;
+  }
+
+  // Header
+  document.getElementById('reviewPageExamName').textContent = attempt.examName || 'Bài thi';
+  document.getElementById('reviewPageDate').textContent = '📅 ' + (attempt.dateStr || '');
+
+  const p = attempt.percent || 0;
+  const gradeClass = p >= 80 ? 'grade-great' : p >= 50 ? 'grade-ok' : 'grade-bad';
+  const gradeLabel = p >= 90 ? 'Xuất sắc' : p >= 80 ? 'Giỏi' : p >= 60 ? 'Khá' : p >= 50 ? 'Trung bình' : 'Cần cố gắng';
+  badge.className = 'erp-score-pill ' + gradeClass;
+  badge.innerHTML = `
+    <span class="erp-score-pill__num">${attempt.score}/${attempt.total}</span>
+    <span class="erp-score-pill__meta">
+      <span class="erp-score-pill__pct">${p}%</span>
+      <span class="erp-score-pill__lbl">${gradeLabel}</span>
+    </span>`;
+
+  const details = attempt.details || [];
+  const cntOk   = details.filter(q => q.s).length;
+  const cntBad  = details.filter(q => !q.s && q.u).length;
+  const cntSkip = details.filter(q => !q.u).length;
+
+  window.reviewQuestionStore = {};
+
+  // ── Helper: kiểm tra option có phải đáp án đúng không ──
+  // Hỗ trợ cả 2 format: text đầy đủ và chữ cái A/B/C/D
+  function isCorrectOpt(opt, letterIndex, ans) {
+    const letter = String.fromCharCode(65 + letterIndex); // A,B,C,D...
+    const ansTrim = (ans || '').trim();
+    const optTrim = (opt || '').trim();
+    if (!ansTrim) return false;
+    // So sánh text đầy đủ (normalize)
+    if (optTrim.toLowerCase() === ansTrim.toLowerCase()) return true;
+    // So sánh chữ cái (A, B, C, D)
+    if (ansTrim.toUpperCase() === letter) return true;
+    // So sánh "A." hoặc "A)"
+    if (ansTrim.replace(/[.)]/g,'').toUpperCase() === letter) return true;
+    return false;
+  }
+
+  function isUserPickOpt(opt, letterIndex, sel) {
+    const letter = String.fromCharCode(65 + letterIndex);
+    const selTrim = (sel || '').trim();
+    const optTrim = (opt || '').trim();
+    if (!selTrim) return false;
+    if (optTrim.toLowerCase() === selTrim.toLowerCase()) return true;
+    if (selTrim.toUpperCase() === letter) return true;
+    if (selTrim.replace(/[.)]/g,'').toUpperCase() === letter) return true;
+    return false;
+  }
+
+  let cardsHtml = '';
+
+  if (!details.length) {
+    cardsHtml = `
+      <div class="erp-empty">
+        <span class="erp-empty__icon">📋</span>
+        <p class="erp-empty__title">Không có dữ liệu chi tiết</p>
+        <p class="erp-empty__desc">Bài thi này chưa lưu dữ liệu từng câu.<br>Hãy làm lại để xem kết quả đầy đủ.</p>
+      </div>`;
+  } else {
+    details.forEach((q, i) => {
+      const key = i + '_' + historyId.substring(0, 8);
+      window.reviewQuestionStore[key] = q;
+
+      const ok   = !!q.s;
+      const skip = !q.u;
+      const mod  = skip ? 'erp-card--skip' : ok ? 'erp-card--ok' : 'erp-card--bad';
+      const label = skip ? 'Bỏ trống' : ok ? 'Đúng ✓' : 'Sai ✗';
+
+      const opts = Array.isArray(q.opts) ? q.opts : [];
+      const ans  = (q.a || '').trim();
+      const sel  = (q.u || '').trim();
+
+      // ── Render options ──
+      let optsHtml = '';
+
+      if (opts.length > 0) {
+        // Có danh sách options đầy đủ
+        optsHtml = '<div class="erp-options">';
+        opts.forEach((opt, oi) => {
+          const isAns = isCorrectOpt(opt, oi, ans);
+          const isSel = isUserPickOpt(opt, oi, sel);
+          const isBad = isSel && !isAns;
+
+          let cls = '', keyContent = String.fromCharCode(65 + oi), labelHtml = '';
+          if (isAns && isSel) {
+            cls = 'erp-opt--ok';
+            keyContent = '✓';
+            labelHtml = `<span class="erp-opt__label">Đúng ✓</span>`;
+          } else if (isAns) {
+            cls = 'erp-opt--ok';
+            keyContent = '✓';
+            labelHtml = `<span class="erp-opt__label">Đáp án đúng</span>`;
+          } else if (isBad) {
+            cls = 'erp-opt--bad';
+            keyContent = '✗';
+            labelHtml = `<span class="erp-opt__label">Bạn chọn</span>`;
+          } else {
+            keyContent = String.fromCharCode(65 + oi);
+          }
+
+          optsHtml += `
+            <div class="erp-opt ${cls}">
+              <span class="erp-opt__key">${keyContent}</span>
+              <span class="erp-opt__text">${opt}</span>
+              ${labelHtml}
+            </div>`;
+        });
+        optsHtml += '</div>';
+
+      } else {
+        // Không có opts (bài thi cũ) — hiển thị dạng text
+        optsHtml = '<div class="erp-options">';
+        if (sel) {
+          const cls = ok ? 'erp-opt--ok' : 'erp-opt--bad';
+          const icon = ok ? '✓' : '✗';
+          const lbl = ok
+            ? `<span class="erp-opt__label">Đúng ✓</span>`
+            : `<span class="erp-opt__label">Bạn chọn</span>`;
+          optsHtml += `<div class="erp-opt ${cls}"><span class="erp-opt__key">${icon}</span><span class="erp-opt__text">${sel}</span>${lbl}</div>`;
+        }
+        if (!ok && ans) {
+          optsHtml += `<div class="erp-opt erp-opt--ok"><span class="erp-opt__key">✓</span><span class="erp-opt__text">${ans}</span><span class="erp-opt__label">Đáp án đúng</span></div>`;
+        }
+        if (!sel && !ans) {
+          optsHtml += `<div class="erp-opt"><span class="erp-opt__key">–</span><span class="erp-opt__text" style="color:var(--text-muted)">Bài thi cũ chưa lưu lựa chọn. Hãy làm lại để xem đầy đủ.</span></div>`;
+        }
+        optsHtml += '</div>';
+      }
+
+      const explainHtml = q.ex
+        ? `<div class="erp-explain"><span class="erp-explain__bulb">💡</span><span class="erp-explain__text"><b>Giải thích:</b> ${q.ex}</span></div>`
+        : '';
+
+      cardsHtml += `
+        <div class="erp-card ${mod}">
+          <div class="erp-card__strip"></div>
+          <div class="erp-card__body">
+            <div class="erp-card__row">
+              <div class="erp-card__idx">${i + 1}</div>
+              <div class="erp-card__q">${q.q}</div>
+              <span class="erp-card__tag">${label}</span>
+            </div>
+            ${optsHtml}
+            ${explainHtml}
+            <button class="erp-ai-btn" onclick="window.openAIFromReviewByKey('${key}')">🧠 Hỏi Gia sư AI</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  document.getElementById('examReviewContent').innerHTML = `
+    <div class="erp-chips">
+      <div class="erp-chip erp-chip--ok">
+        <div class="erp-chip__dot">✓</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${cntOk}</span>
+          <span class="erp-chip__txt">Chính xác</span>
+        </div>
+      </div>
+      <div class="erp-chip erp-chip--bad">
+        <div class="erp-chip__dot">✗</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${cntBad}</span>
+          <span class="erp-chip__txt">Sai</span>
+        </div>
+      </div>
+      <div class="erp-chip erp-chip--skip">
+        <div class="erp-chip__dot">–</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${cntSkip}</span>
+          <span class="erp-chip__txt">Bỏ trống</span>
+        </div>
+      </div>
+      <div class="erp-chip erp-chip--all">
+        <div class="erp-chip__dot">Σ</div>
+        <div class="erp-chip__body">
+          <span class="erp-chip__num">${details.length}</span>
+          <span class="erp-chip__txt">Tổng câu</span>
+        </div>
+      </div>
+    </div>
+    ${details.length ? '<p class="erp-section-label">Danh sách câu hỏi</p>' : ''}
+    ${cardsHtml}`;
+
+  document.getElementById('examReviewContent').parentElement.scrollTop = 0;
+};

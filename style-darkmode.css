@@ -126,17 +126,24 @@ body.dark-mode .option-input:checked+.option-label {
   border-color: #3b82f6 !important;
 }
 
-/* Màu đúng/sai */
+/* Màu đúng/sai chính xác, sử dụng background để ghi đè Light Mode triệt để */
 body.dark-mode .option-label.correct {
-  background-color: rgba(6, 78, 59, 0.5) !important;
-  color: #86efac !important;
-  border-color: #059669 !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-color: #34d399 !important;
+  color: #34d399 !important;
+  font-weight: bold !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15) !important;
+  text-shadow: none !important;
 }
 
 body.dark-mode .option-label.incorrect {
-  background-color: rgba(127, 29, 29, 0.4) !important;
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: #f87171 !important;
   color: #fca5a5 !important;
-  border-color: #dc2626 !important;
+  font-weight: bold !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.15) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
 }
 
 /* 6. MODAL LỊCH SỬ */
@@ -517,27 +524,7 @@ body.dark-mode .option-input:checked+.option-label {
   /* Hiệu ứng phát sáng nhẹ */
 }
 
-/* 2. Đáp án ĐÚNG (Correct Result) */
-body.dark-mode .option-label.correct {
-  background-color: rgba(20, 83, 45, 0.6) !important;
-  /* Nền xanh lá đậm */
-  border-color: #4ade80 !important;
-  /* Viền xanh sáng */
-  color: #86efac !important;
-  /* Chữ xanh sáng nổi bật */
-  font-weight: bold;
-}
-
-/* 3. Đáp án SAI (Incorrect Result) */
-body.dark-mode .option-label.incorrect {
-  background-color: rgba(127, 29, 29, 0.6) !important;
-  /* Nền đỏ đậm */
-  border-color: #f87171 !important;
-  /* Viền đỏ sáng */
-  color: #fca5a5 !important;
-  /* Chữ đỏ sáng */
-  opacity: 1 !important;
-}
+/* Đã gộp và tối ưu hóa lên mục Màu đúng/sai ở trên để tránh trùng lặp */
 
 /* 4. Thẻ câu hỏi bị khóa sau khi nộp (Locked Card) */
 body.dark-mode .locked-card {
@@ -573,53 +560,30 @@ body.dark-mode .option-label {
 /* Thêm viền màu rõ ràng cho cả thẻ câu hỏi để biết đúng hay sai */
 
 /* Câu ĐÚNG: Viền xanh lá, nền xanh rêu rất nhạt */
+/* Câu ĐÚNG: Viền xanh lá, sử dụng background gradient ghi đè dải màu Light Mode */
 body.dark-mode .question-card.correct {
   border: 2px solid #059669 !important;
-  /* Viền xanh lá đậm rõ nét */
-  background-color: rgba(6,
-      78,
-      59,
-      0.25) !important;
-  /* Nền xanh tối trong suốt */
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.25), rgba(15, 23, 42, 0.95)) !important;
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.1) !important;
-  /* Ánh sáng xanh nhẹ */
 }
 
-/* Câu SAI: Viền đỏ, nền đỏ rượu rất nhạt */
+/* Câu SAI: Viền đỏ, sử dụng background gradient ghi đè dải màu Light Mode */
 body.dark-mode .question-card.incorrect {
   border: 2px solid #dc2626 !important;
-  /* Viền đỏ đậm rõ nét */
-  background-color: rgba(127,
-      29,
-      29,
-      0.25) !important;
-  /* Nền đỏ tối trong suốt */
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.25), rgba(15, 23, 42, 0.95)) !important;
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.1) !important;
-  /* Ánh sáng đỏ nhẹ */
+}
+
+/* Hiệu ứng phản hồi nhảy câu trong Dark Mode */
+body.dark-mode .question-card.active-highlight {
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 20px rgba(96, 165, 250, 0.35) !important;
 }
 
 /* --- C. ĐÁP ÁN BÊN TRONG (OPTIONS) --- */
 
 /* Đáp án ĐÚNG (Màu xanh neon dịu, chữ trắng) */
-body.dark-mode .option-label.correct {
-  background-color: rgba(21, 128, 61, 0.4) !important;
-  border-color: #4ade80 !important;
-  /* Viền xanh sáng */
-  color: #ffffff !important;
-  /* Chữ trắng tinh cho dễ đọc */
-  font-weight: bold;
-}
-
-/* Đáp án SAI mà người dùng chọn (Đỏ cam) */
-body.dark-mode .option-label.incorrect {
-  background-color: rgba(153, 27, 27, 0.4) !important;
-  border-color: #f87171 !important;
-  /* Viền đỏ sáng */
-  color: #fca5a5 !important;
-  /* Chữ đỏ hồng */
-  opacity: 1 !important;
-  /* Không làm mờ */
-}
+/* Đã gộp và tối ưu hóa lên mục Màu đúng/sai ở trên để tránh trùng lặp */
 
 /* --- D. BẢNG DANH SÁCH CÂU HỎI (SIDEBAR NAV) --- */
 /* Cố định màu sắc cho các ô số bên phải */
@@ -1087,4 +1051,698 @@ body.dark-mode .q-analysis-header h4 {
 
 body.dark-mode .q-analysis-header p {
   color: #e2e8f0;
+}
+
+/* ========================================================
+   13. DARK MODE CHO RESULT DASHBOARD & INLINE AI BOX
+   ======================================================== */
+body.dark-mode .result-dashboard {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .result-title-block h2 {
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .score-circle-text {
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .score-circle-bg {
+  stroke: #334155 !important;
+}
+
+body.dark-mode .result-stat-card.correct {
+  background-color: rgba(6, 78, 59, 0.25) !important;
+  border-color: #065f46 !important;
+  color: #4ade80 !important;
+}
+
+body.dark-mode .result-stat-card.incorrect {
+  background-color: rgba(127, 29, 29, 0.25) !important;
+  border-color: #7f1d1d !important;
+  color: #fca5a5 !important;
+}
+
+body.dark-mode .result-stat-card.unanswered {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .btn-result-action.secondary {
+  background-color: #1e293b !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .btn-result-action.secondary:hover {
+  background-color: #334155 !important;
+  border-color: #475569 !important;
+}
+
+/* Inline AI Box Dark Mode */
+body.dark-mode .inline-ai-box {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  border-left: 4px solid #a78bfa !important;
+  box-shadow: none !important;
+}
+
+body.dark-mode .inline-ai-header {
+  background: linear-gradient(to right, #1e293b, #0f172a) !important;
+  border-bottom-color: #334155 !important;
+}
+
+body.dark-mode .inline-ai-title {
+  color: #a78bfa !important;
+}
+
+body.dark-mode .inline-ai-body {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .inline-ai-content h3 {
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .inline-ai-content blockquote {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-left-color: #f59e0b !important;
+  color: #fcd34d !important;
+}
+
+body.dark-mode .inline-ai-content blockquote strong {
+  color: #fef08a !important;
+}
+
+body.dark-mode .inline-ai-footer {
+  background-color: #1e293b !important;
+  border-top-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .btn-inline-ai-tool {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .btn-inline-ai-tool:hover {
+  background-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .btn-inline-ai-tool.active-yes {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  border-color: #059669 !important;
+  color: #86efac !important;
+}
+
+body.dark-mode .btn-inline-ai-tool.active-no {
+  background-color: rgba(127, 29, 29, 0.4) !important;
+  border-color: #dc2626 !important;
+  color: #fca5a5 !important;
+}
+
+body.dark-mode .review-explain {
+  background-color: rgba(6, 78, 59, 0.25) !important;
+  border-color: #065f46 !important;
+  color: #a7f3d0 !important;
+  border-left: 4px solid #10b981 !important;
+}
+
+/* Sidebar Nav Active - Dark Mode */
+body.dark-mode .qnav-item.nav-active {
+  border-color: #f59e0b !important;
+  background-color: rgba(217, 119, 6, 0.2) !important;
+  color: #fcd34d !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Dark Mode cho Menu Đang Thi Hoạt Hình Độc Quyền */
+body.dark-mode .exam-active-header {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border-color: #334155 !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4), inset 0 -2px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+body.dark-mode .active-header-tag {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .active-header-title h2 {
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .active-timer-bubble {
+  background-color: #020617 !important;
+  border-color: #334155 !important;
+  border-bottom-color: #1e293b !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode .timer-text {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .active-progress-container-inline {
+  background-color: #334155 !important;
+}
+
+body.dark-mode .active-timer-bubble.danger {
+  border-color: #ef4444 !important;
+  border-bottom-color: #b91c1c !important;
+  background-color: rgba(127, 29, 29, 0.25) !important;
+}
+
+body.dark-mode .active-timer-bubble.danger .timer-text {
+  color: #fca5a5 !important;
+}
+
+/* ========================================================
+   14. DARK MODE CHO NÚT 3D HOẠT HÌNH & BẢNG CÂU HỎI SIDEBAR
+   ======================================================== */
+body.dark-mode .btn-cartoon.btn-3d-green {
+  background: #15803d !important; /* Xanh lá tối dịu hơn */
+  border-bottom: 5px solid #14532d !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.15) !important;
+}
+body.dark-mode .btn-cartoon.btn-3d-green:hover {
+  background: #166534 !important;
+}
+
+body.dark-mode .btn-cartoon.btn-3d-orange {
+  background: #c2410c !important; /* Cam gạch tối dịu hơn */
+  border-bottom: 5px solid #7c2d12 !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 4px 10px rgba(194, 65, 12, 0.15) !important;
+}
+body.dark-mode .btn-cartoon.btn-3d-orange:hover {
+  background: #9a3412 !important;
+}
+
+body.dark-mode .btn-cartoon.btn-3d-blue {
+  background: #1d4ed8 !important; /* Xanh dương đậm dịu hơn */
+  border-bottom: 5px solid #1e40af !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15) !important;
+}
+body.dark-mode .btn-cartoon.btn-3d-blue:hover {
+  background: #1e40af !important;
+}
+
+body.dark-mode .btn-cartoon.btn-3d-gray {
+  background: #334155 !important; /* Slate gray tối */
+  border-bottom: 5px solid #1e293b !important;
+  color: #cbd5e1 !important;
+  box-shadow: 0 4px 10px rgba(51, 65, 85, 0.15) !important;
+}
+body.dark-mode .btn-cartoon.btn-3d-gray:hover {
+  background: #475569 !important;
+}
+
+/* Ghi đè bảng câu hỏi bên phải trong Dark Mode */
+body.dark-mode .question-nav {
+  background: rgba(30, 41, 59, 0.85) !important; /* Slate-800 mờ trong suốt */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .question-nav-header {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .qnav-item {
+  background-color: #0f172a !important; /* Slate-950 */
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .qnav-item:hover {
+  border-color: #3b82f6 !important;
+  color: #60a5fa !important;
+  background-color: #1e293b !important;
+}
+
+/* Các trạng thái ô số câu hỏi trong Dark Mode */
+body.dark-mode .qnav-item.nav-answered {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: #3b82f6 !important;
+  color: #60a5fa !important;
+}
+
+body.dark-mode .qnav-item.nav-correct {
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-color: #10b981 !important;
+  color: #4ade80 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2) !important;
+}
+
+body.dark-mode .qnav-item.nav-incorrect {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: #ef4444 !important;
+  color: #fca5a5 !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Dark mode cho nút đóng bảng câu hỏi close-btn */
+body.dark-mode .close-btn {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .close-btn:hover {
+  background: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+/* =========================================================
+   CONVERSATIONAL AI TUTOR MODAL (DARK MODE OVERRIDES)
+   ========================================================= */
+body.dark-mode #aiTutorModal {
+  background-color: rgba(2, 6, 17, 0.7) !important;
+}
+
+body.dark-mode .ai-tutor-modal-box {
+  background: rgba(30, 41, 59, 0.95) !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .ai-tutor-modal-header {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border-bottom-color: #334155 !important;
+}
+
+body.dark-mode .ai-tutor-header-meta h4 {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .ai-badge-model {
+  background: rgba(96, 165, 250, 0.2) !important;
+  color: #60a5fa !important;
+}
+
+body.dark-mode .btn-close-ai-tutor {
+  background: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .btn-close-ai-tutor:hover {
+  background: #475569 !important;
+  color: #ef4444 !important;
+}
+
+body.dark-mode .ai-tutor-modal-body {
+  background: #0f172a !important;
+}
+
+body.dark-mode .ai-chat-context-box {
+  background: rgba(30, 58, 138, 0.3) !important;
+  border-left-color: #3b82f6 !important;
+  color: #bfdbfe !important;
+}
+
+body.dark-mode .ai-context-icon {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .ai-msg-avatar {
+  background: #1e293b !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .ai-message.bot .ai-msg-bubble {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .ai-message.bot .ai-msg-bubble h3 {
+  color: #cbd5e1 !important;
+  border-bottom-color: #334155 !important;
+}
+
+body.dark-mode .ai-message.bot .ai-msg-bubble blockquote {
+  background: rgba(6, 78, 59, 0.3) !important;
+  border-left-color: #10b981 !important;
+  color: #86efac !important;
+}
+
+body.dark-mode .ai-typing-dots span {
+  background-color: #60a5fa !important;
+}
+
+body.dark-mode .ai-tutor-modal-footer {
+  background: #1e293b !important;
+  border-top-color: #334155 !important;
+}
+
+body.dark-mode #aiChatInput {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode #aiChatInput:focus {
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+}
+
+body.dark-mode .btn-ai-control-tool {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .btn-ai-control-tool:hover {
+  color: #60a5fa !important;
+  background: rgba(96, 165, 250, 0.08) !important;
+}
+/* ============================================================
+   DARK MODE: FULL PAGE LICH SU & XEM LAI
+   ============================================================ */
+body.dark .full-page {
+  background: var(--bg-page);
+}
+body.dark .full-page-header {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+body.dark .btn-back-page {
+  background: var(--bg-page);
+  border-color: var(--border);
+  color: var(--text-main);
+}
+body.dark .btn-back-page:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+body.dark .full-page-title h2 {
+  color: var(--text-main);
+}
+body.dark .hist-tab-btn {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: transparent;
+}
+body.dark .hist-tab-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+body.dark .hist-tab-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+body.dark .history-page-filter {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+body.dark .history-exam-card {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+body.dark .history-exam-card .card-exam-name {
+  color: var(--text-main);
+}
+body.dark .history-exam-card .card-date {
+  color: var(--text-muted);
+}
+body.dark .review-question-card {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+body.dark .review-question-card.rq-correct {
+  background: linear-gradient(to right, rgba(16,185,129,0.1), var(--bg-card));
+  border-left-color: #10b981;
+}
+body.dark .review-question-card.rq-incorrect {
+  background: linear-gradient(to right, rgba(239,68,68,0.1), var(--bg-card));
+  border-left-color: #ef4444;
+}
+body.dark .review-question-card.rq-skip {
+  background: linear-gradient(to right, rgba(245,158,11,0.1), var(--bg-card));
+  border-left-color: #f59e0b;
+}
+body.dark .review-q-text {
+  color: var(--text-main);
+}
+body.dark .review-option-row {
+  background: var(--bg-page);
+  border-color: var(--border);
+  color: var(--text-main);
+}
+body.dark .review-option-row.opt-correct {
+  background: rgba(16,185,129,0.15);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+body.dark .review-option-row.opt-user-wrong {
+  background: rgba(239,68,68,0.15);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+body.dark .review-explain-box {
+  background: rgba(59,130,246,0.12);
+  border-left-color: #60a5fa;
+  color: #93c5fd;
+}
+body.dark .review-summary-chip {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+body.dark .review-summary-chip .chip-label {
+  color: var(--text-muted);
+}
+body.dark .history-empty-state {
+  color: var(--text-muted);
+}
+body.dark .history-empty-state h3 {
+  color: var(--text-main);
+}
+body.dark .review-option-icon {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+/* Modern home + exam redesign dark mode */
+body.dark-mode,
+body.dark {
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.1), transparent 32rem),
+    linear-gradient(180deg, #020617 0%, #111827 100%) !important;
+}
+
+body.dark-mode .exam-header,
+body.dark-mode .setup-panel,
+body.dark-mode .status-panel,
+body.dark-mode .question-nav,
+body.dark-mode .home-card,
+body.dark-mode .question-card,
+body.dark .exam-header,
+body.dark .setup-panel,
+body.dark .status-panel,
+body.dark .question-nav,
+body.dark .home-card,
+body.dark .question-card {
+  background: rgba(15, 23, 42, 0.94) !important;
+  border-color: #334155 !important;
+  color: #e5e7eb !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.26) !important;
+}
+
+body.dark-mode .brand-icon-3d,
+body.dark .brand-icon-3d {
+  background: #e5e7eb !important;
+  color: #020617 !important;
+}
+
+body.dark-mode .brand-text h1,
+body.dark-mode .exam-name-display,
+body.dark-mode .question-nav-header,
+body.dark-mode .home-card strong,
+body.dark-mode .question-text,
+body.dark-mode .footer-result,
+body.dark .brand-text h1,
+body.dark .exam-name-display,
+body.dark .question-nav-header,
+body.dark .home-card strong,
+body.dark .question-text,
+body.dark .footer-result {
+  color: #f8fafc !important;
+}
+
+body.dark-mode .brand-text p,
+body.dark-mode .file-status,
+body.dark-mode .home-card span,
+body.dark-mode .question-header small,
+body.dark-mode .status-timer-icon,
+body.dark .brand-text p,
+body.dark .file-status,
+body.dark .home-card span,
+body.dark .question-header small,
+body.dark .status-timer-icon {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .btn-upload,
+body.dark-mode .btn-icon-drive,
+body.dark-mode .btn-tool,
+body.dark-mode .btn-outline,
+body.dark-mode .time-wrapper,
+body.dark-mode .option-label,
+body.dark-mode .qnav-item,
+body.dark .btn-upload,
+body.dark .btn-icon-drive,
+body.dark .btn-tool,
+body.dark .btn-outline,
+body.dark .time-wrapper,
+body.dark .option-label,
+body.dark .qnav-item {
+  background: #020617 !important;
+  border-color: #334155 !important;
+  color: #d1d5db !important;
+}
+
+body.dark-mode .file-status.ready,
+body.dark .file-status.ready {
+  background: rgba(5, 150, 105, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #86efac !important;
+}
+
+body.dark-mode .home-hero,
+body.dark .home-hero {
+  background:
+    linear-gradient(135deg, rgba(2, 6, 23, 0.92), rgba(15, 23, 42, 0.9)),
+    url("https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1600&q=80") !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+body.dark-mode .home-secondary-action,
+body.dark .home-secondary-action {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .home-primary-action,
+body.dark .home-primary-action {
+  background: #e5e7eb !important;
+  color: #020617 !important;
+}
+
+body.dark-mode .question-card.correct,
+body.dark .question-card.correct {
+  background: linear-gradient(180deg, #0f172a, rgba(5, 150, 105, 0.14)) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+body.dark-mode .question-card.incorrect,
+body.dark .question-card.incorrect {
+  background: linear-gradient(180deg, #0f172a, rgba(220, 38, 38, 0.14)) !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+}
+
+body.dark-mode .question-header span,
+body.dark .question-header span {
+  background: rgba(37, 99, 235, 0.18) !important;
+  color: #93c5fd !important;
+}
+
+body.dark-mode .option-label:hover,
+body.dark .option-label:hover {
+  background: #111827 !important;
+  border-color: #60a5fa !important;
+}
+
+body.dark-mode .option-label-marker,
+body.dark .option-label-marker {
+  background: #1e1b4b !important;
+  color: #c4b5fd !important;
+}
+
+body.dark-mode .option-input:checked + .option-label,
+body.dark .option-input:checked + .option-label {
+  background: rgba(37, 99, 235, 0.18) !important;
+  border-color: #60a5fa !important;
+  color: #f8fafc !important;
+}
+
+body.dark-mode .option-input:checked + .option-label .option-label-marker,
+body.dark .option-input:checked + .option-label .option-label-marker {
+  background: #60a5fa !important;
+  color: #020617 !important;
+}
+
+body.dark-mode .qnav-item.nav-active,
+body.dark .qnav-item.nav-active {
+  background: #e5e7eb !important;
+  color: #020617 !important;
+  border-color: #e5e7eb !important;
+}
+
+body.dark-mode .qnav-item.nav-answered,
+body.dark .qnav-item.nav-answered {
+  background: rgba(37, 99, 235, 0.18) !important;
+  color: #93c5fd !important;
+  border-color: #3b82f6 !important;
+}
+
+body.dark-mode .history-summary-alert,
+body.dark .history-summary-alert {
+  background: rgba(14, 116, 144, 0.16) !important;
+  color: #a5f3fc !important;
+  border-color: rgba(34, 211, 238, 0.34) !important;
+}
+
+body.dark-mode .exam-active-header,
+body.dark .exam-active-header {
+  background: rgba(15, 23, 42, 0.94) !important;
+  border-color: #334155 !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32) !important;
+}
+
+body.dark-mode .active-header-icon,
+body.dark .active-header-icon {
+  background: rgba(96, 165, 250, 0.16) !important;
+}
+
+body.dark-mode .active-header-title h2,
+body.dark .active-header-title h2,
+body.dark-mode .timer-text,
+body.dark .timer-text {
+  color: #f8fafc !important;
+}
+
+body.dark-mode .active-timer-bubble,
+body.dark .active-timer-bubble {
+  background: #020617 !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .active-timer-bubble.danger,
+body.dark .active-timer-bubble.danger {
+  background: rgba(127, 29, 29, 0.34) !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+}
+
+body.dark-mode .exam-menu-btn-neutral,
+body.dark .exam-menu-btn-neutral,
+body.dark-mode .exam-menu-btn-ghost,
+body.dark .exam-menu-btn-ghost {
+  background: #020617 !important;
+  border-color: #334155 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .active-progress-container-inline,
+body.dark .active-progress-container-inline {
+  background: #1e293b !important;
 }
