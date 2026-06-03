@@ -2898,6 +2898,21 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  const activeHeader = document.getElementById("examActiveHeader");
+  const toggleActiveBtn = document.getElementById("btnToggleActiveHeaderMobile");
+  if (toggleActiveBtn) {
+    toggleActiveBtn.onclick = () => {
+      activeHeader.classList.toggle("header-hidden");
+      if (activeHeader.classList.contains("header-hidden")) {
+        toggleActiveBtn.textContent = "▼";
+        toggleActiveBtn.title = "Hiện menu bài thi";
+      } else {
+        toggleActiveBtn.textContent = "▲";
+        toggleActiveBtn.title = "Ẩn menu bài thi";
+      }
+    };
+  }
+
   // 7. Toggle AI Expanded
   const aiBox = document.getElementById("aiResultBox");
   const expandBtn = document.getElementById("btnExpandAI");

@@ -1547,20 +1547,22 @@ body {
   .exam-header {
     flex-direction: column;
     align-items: stretch;
-    padding: 10px 12px;
-    gap: 10px;
+    padding: 8px 10px;
+    gap: 6px;
     position: sticky;
     top: 0;
     z-index: 90;
   }
 
-  .exam-header.header-hidden {
+  .exam-header.header-hidden,
+  .exam-active-header.header-hidden {
     transform: translateY(-100%);
     box-shadow: none;
     pointer-events: none;
   }
 
-  .exam-header.header-hidden .header-toggle-btn {
+  .exam-header.header-hidden .header-toggle-btn,
+  .exam-active-header.header-hidden .header-toggle-btn {
     transform: translateX(-50%) translateY(100%);
     bottom: 0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -1574,10 +1576,17 @@ body {
   .header-right {
     display: flex !important;
     width: 100%;
-    justify-content: space-between;
+    justify-content: center;
+    gap: 12px;
     align-items: center;
     order: 1;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
+  }
+
+  .header-right .btn-tool {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
   }
 
   .exam-header:has(.status-panel[style*="flex"]) .header-right {
@@ -1587,8 +1596,8 @@ body {
   .setup-panel {
     flex-direction: column;
     width: 100%;
-    padding: 10px;
-    gap: 10px;
+    padding: 8px;
+    gap: 6px;
     order: 2;
   }
 
@@ -1596,27 +1605,58 @@ body {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .cloud-upload-wrapper {
+    width: 100%;
+    display: block;
   }
 
   .btn-upload,
   .btn-icon-drive {
     justify-content: center;
     width: 100%;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .file-status {
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    border-right: none;
+    border-top: 1px dashed #cbd5e1;
+    border-bottom: 1px dashed #cbd5e1;
+    padding: 4px 0;
+    margin: 2px 0;
+    font-size: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   .action-group {
     width: 100%;
     display: flex;
-    gap: 8px;
+    gap: 6px;
   }
 
   .time-wrapper {
     flex: 1;
   }
 
+  .time-wrapper input {
+    padding: 6px 10px;
+    font-size: 13px;
+    height: 34px;
+  }
+
   .btn-start {
     flex: 1.5;
+    padding: 6px 16px;
+    font-size: 14px;
+    height: 34px;
   }
 
   /* Status Panel Mobile */
