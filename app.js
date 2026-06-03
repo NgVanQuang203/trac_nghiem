@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // IMPORT GOOGLE GEMINI SDK
 // ========================
 //import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
@@ -758,33 +758,50 @@ window.closeCloudAlert = function () {
 // FOLDER & FILE LOGIC — DRAG & DROP
 // ==========================================
 
+// Global flag to prevent click after drag
+let _dragJustHappened = false;
+let _dragJustHappenedTimer = null;
+
 window.handleItemDragStart = function (e, id, type) {
   e.dataTransfer.setData("itemId", id);
   e.dataTransfer.setData("itemType", type);
   e.dataTransfer.effectAllowed = "move";
+  _dragJustHappened = true;
+  if (_dragJustHappenedTimer) clearTimeout(_dragJustHappenedTimer);
 
-  // Hiệu ứng mờ cho item đang bị kéo
-  e.target.style.opacity = "0.5";
-  e.target.classList.add("dragging");
+  // Hieu ung mo cho item dang bi keo
+  const el = e.currentTarget;
+  el.style.opacity = "0.5";
+  el.classList.add("dragging");
 };
 
 window.handleItemDragEnd = function (e) {
-  e.target.style.opacity = "1";
-  e.target.classList.remove("dragging");
+  const el = e.currentTarget;
+  el.style.opacity = "1";
+  el.classList.remove("dragging");
+  // Keep flag true briefly to suppress the click event that fires after dragend
+  _dragJustHappenedTimer = setTimeout(() => {
+    _dragJustHappened = false;
+  }, 300);
 };
 
 window.handleItemDragOver = function (e, el) {
   e.preventDefault();
+  e.stopPropagation();
   e.dataTransfer.dropEffect = "move";
   el.classList.add("drag-target");
 };
 
 window.handleItemDragLeave = function (e, el) {
-  el.classList.remove("drag-target");
+  // Only remove class if we actually left the element (not just moved to a child)
+  if (!el.contains(e.relatedTarget)) {
+    el.classList.remove("drag-target");
+  }
 };
 
 window.handleItemDrop = async function (e, targetFolderId) {
   e.preventDefault();
+  e.stopPropagation();
   const el = e.currentTarget;
   el.classList.remove("drag-target");
 
@@ -802,15 +819,60 @@ window.handleItemDrop = async function (e, targetFolderId) {
         folderId: targetFolderId
       });
     } else if (itemType === 'folder') {
-      // Chặn việc kéo folder vào chính nó hoặc con của nó (để đơn giản, hiện tại chỉ chặn kéo vào chính nó)
       await db.collection("users").doc(user.uid).collection("folders").doc(itemId).update({
         parentId: targetFolderId
       });
     }
     loadCloudDirectory();
   } catch (err) {
-    console.error("Lỗi di chuyển:", err);
-    cloudAlert({ title: "Lỗi", message: "Không thể di chuyển: " + err.message, icon: "❌" });
+    console.error("Loi di chuyen:", err);
+    cloudAlert({ title: "Loi", message: "Khong the di chuyen: " + err.message, icon: "❌" });
+  }
+};
+
+// Drop to root level (move item to current folder root)
+window.handleRootDrop = async function (e) {
+  e.preventDefault();
+  const cloudBody = document.getElementById("cloudBody");
+  if (cloudBody) cloudBody.classList.remove("drag-over");
+
+  const itemId = e.dataTransfer.getData("itemId");
+  const itemType = e.dataTransfer.getData("itemType");
+  if (!itemId) return;
+
+  const user = auth.currentUser;
+  if (!user) return;
+
+  // Move to currentFolderId (null = root)
+  const targetId = currentFolderId || null;
+
+  try {
+    if (itemType === 'file') {
+      await db.collection("users").doc(user.uid).collection("examFiles").doc(itemId).update({
+        folderId: targetId
+      });
+    } else if (itemType === 'folder') {
+      await db.collection("users").doc(user.uid).collection("folders").doc(itemId).update({
+        parentId: targetId
+      });
+    }
+    loadCloudDirectory();
+  } catch (err) {
+    console.error("Loi di chuyen ve root:", err);
+  }
+};
+
+window.handleRootDragOver = function (e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  const cloudBody = document.getElementById("cloudBody");
+  if (cloudBody) cloudBody.classList.add("drag-over");
+};
+
+window.handleRootDragLeave = function (e) {
+  const cloudBody = document.getElementById("cloudBody");
+  if (cloudBody && !cloudBody.contains(e.relatedTarget)) {
+    cloudBody.classList.remove("drag-over");
   }
 };
 
@@ -1261,14 +1323,28 @@ async function loadCloudDirectory() {
     });
 
     gridEl.innerHTML = html;
+
+    // Thiet lap root-drop handler tren cloudBody
+    const cloudBodyEl = document.getElementById("cloudBody");
+    if (cloudBodyEl) {
+      cloudBodyEl.ondragover = window.handleRootDragOver;
+      cloudBodyEl.ondragleave = window.handleRootDragLeave;
+      cloudBodyEl.ondrop = window.handleRootDrop;
+    }
+
   } catch (e) {
     loadingEl.style.display = "none";
     gridEl.innerHTML = `<div class="cloud-empty" style="color:#dc2626">❌ Lỗi tải dữ liệu: ${e.message}</div>`;
   }
 }
 
-// Mở một thư mục (Click vào thư mục)
+// Mo mot thu muc (Click vao thu muc) - voi bao ve chong click sau drag
 window.enterFolder = function (folderId, folderName) {
+  // Neu vua ket thuc keo tha, bo qua click
+  if (_dragJustHappened) {
+    _dragJustHappened = false;
+    return;
+  }
   currentFolderId = folderId;
   cloudPath.push({ id: folderId, name: folderName });
   renderBreadcrumb();
@@ -1635,14 +1711,14 @@ function grade(autoSubmit) {
       if (navBtn) navBtn.classList.add("nav-incorrect");
     }
 
-    // Hiện badge trạng thái (Chính xác / Sai / Chưa trả lời)
+    // Hien badge trang thai
     const badge = document.createElement("div");
     badge.className = "q-status-badge";
     if (!selected) {
-      badge.textContent = "Chưa trả lời";
+      badge.textContent = "Ch\u01b0a tr\u1ea3 l\u1eddi";
       badge.classList.add("q-status-unanswered");
     } else if (isCorrect) {
-      badge.textContent = "Chính xác";
+      badge.textContent = "Ch\u00ednh x\u00e1c";
       badge.classList.add("q-status-correct");
     } else {
       badge.textContent = "Sai";
@@ -1650,35 +1726,33 @@ function grade(autoSubmit) {
     }
     card.appendChild(badge);
 
-    // Hiện khu vực hành động AI
+    // Hien khu vuc hanh dong AI
     const actionArea = document.getElementById(`actions-${i}`);
     if (actionArea) actionArea.style.display = "flex";
 
-    // Hiện explain sau khi chấm bài
+    // Hien explain sau khi cham bai
     if (q.explain) {
       let explainEl = document.getElementById(`explain-${i}`);
       if (!explainEl) {
         explainEl = document.createElement("div");
         explainEl.className = "review-explain";
-        explainEl.innerHTML = `💡 <b>Giải thích:</b> ${q.explain}`;
+        explainEl.innerHTML = `\u1f4a1 <b>Gi\u1ea3i th\u00edch:</b> ${q.explain}`;
         card.appendChild(explainEl);
       }
       explainEl.style.display = "block";
     }
   }); // end questionsData.forEach
 
-  // --- GỬI BATCH LÊN CLOUD ---
+  // --- GUI BATCH LEN CLOUD ---
   if (hasMistakesToSave) {
     batch
       .commit()
-      .then(() => console.log("☁️ Đã lưu các câu sai vào Firebase"));
+      .then(() => console.log("\u2601\ufe0f \u0110\xe3 l\u01b0u c\xe1c c\xe2u sai v\xe0o Firebase"));
   }
   // ---------------------------
   if (score > 0) {
-    // Ví dụ: Mỗi câu đúng được 10 XP (hoặc tùy bạn chỉnh)
-    // Nếu muốn khó hơn: gainXP(score * 5);
     gainXP(score * 10);
-    console.log(`🎉 Đã cộng ${score * 10} XP`);
+    console.log(`\u1f389 \u0110\xe3 c\u1ed9ng ${score * 10} XP`);
   }
   const total = questionsData.length;
   const percent = Math.round((score / total) * 100);
@@ -1699,11 +1773,12 @@ window.resetExam = async function () {
   if (examFinished) {
     pendingData = null;
     questionsData = [];
+    // Reset topResult BEFORE showing mainHeader
+    document.getElementById("topResult").style.display = "none";
+    document.getElementById("topResult").textContent = "--%";
     setHeaderMode("setup");
     renderHomeScreen();
     document.getElementById("result").textContent = "";
-    document.getElementById("topResult").style.display = "none";
-    document.getElementById("topResult").textContent = "--%";
     document.getElementById("btnGradeHeader").style.display = "none";
     document.getElementById("btnGradeNav").style.display = "none";
     const activeGrade = document.getElementById("btnActiveGrade");
@@ -1724,11 +1799,13 @@ window.resetExam = async function () {
   examFinished = false;
   questionsData = [];
   pendingData = null;
+  // Reset topResult BEFORE showing mainHeader
+  document.getElementById("topResult").style.display = "none";
+  document.getElementById("topResult").textContent = "--%";
   setHeaderMode("setup");
   updateFileStatus("", false);
   renderHomeScreen();
   document.getElementById("result").textContent = "";
-  document.getElementById("topResult").style.display = "none";
   document.getElementById("examHistorySummary").style.display = "none";
   document.getElementById("questionList").innerHTML = "";
   closeQuestionNav();

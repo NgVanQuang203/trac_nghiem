@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* --- RESET & BASE --- */
 :root {
@@ -97,6 +97,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  min-width: 0;
 }
 
 /* SETUP PANEL */
@@ -109,12 +110,14 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+  min-width: 0;
 }
 
 .file-select-group {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .btn-upload {
@@ -189,6 +192,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .time-wrapper {
@@ -317,6 +321,7 @@ body {
   gap: 10px;
   min-width: 150px;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .btn-tool {
@@ -4935,6 +4940,193 @@ body.dark-mode .move-item.back-item .move-item-icon {
   border-left: 5px solid #3b82f6;
   box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
 }
+.q-analysis-header h4 {
+  margin: 0 0 10px 0;
+  color: #1e40af;
+  font-size: 16px;
+}
+.q-analysis-header p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #334155;
+  font-weight: 600;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.timer-display {
+  font-family: var(--font-title) !important;
+  font-variant-numeric: tabular-nums;
+  transition: var(--transition);
+}
+
+.timer-display.danger {
+  color: #ef4444 !important;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  animation: pulse 1s infinite ease-in-out !important;
+}
+
+/* ========================================================
+   14. MENU THI TRẮC NGHIỆM ĐỘC QUYỀN & HOẠT HÌNH 3D
+   ======================================================== */
+.exam-active-header {
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  border-radius: var(--radius-lg);
+  padding: 20px 28px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06), inset 0 -2px 0 rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 10px;
+  z-index: 100;
+  border: 2px solid #e2e8f0;
+  transition: var(--transition);
+  margin-bottom: 24px;
+}
+
+.active-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 20px;
+}
+
+.active-header-left {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  min-width: 0;
+  max-width: 380px;
+  overflow: hidden;
+}
+
+.btn-drive-upload:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(5, 150, 105, 0.3);
+}
+
+.btn-drive-upload:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.drive-upload-status {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Spinner nhỏ cho upload */
+.drive-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* =========================================
+   TỐI ƯU GIAO DIỆN CHUẨN MARKDOWN (DỄ HỌC)
+   ========================================= */
+.markdown-body {
+  font-family: inherit;
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Tiêu đề phân mục */
+.markdown-body h3 {
+  color: #1e40af;
+  /* Xanh đậm */
+  font-size: 18px;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e0e7ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Biến danh sách gạch đầu dòng thành các thẻ (Card) */
+.markdown-body ul {
+  list-style: none;
+  /* Ẩn dấu chấm mặc định */
+  padding-left: 0;
+  margin-bottom: 20px;
+}
+
+.markdown-body ul li {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #3b82f6;
+  /* Viền nhấn bên trái */
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.markdown-body ul li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+  background: #ffffff;
+}
+
+/* Định dạng chữ bôi đậm (Từ khóa trọng tâm) */
+.markdown-body strong {
+  color: #b91c1c;
+  /* Đỏ đô */
+  background: #fee2e2;
+  /* Nền đỏ nhạt */
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+/* Khối Lời khuyên (Blockquote) */
+.markdown-body blockquote {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  margin: 20px 0;
+  padding: 16px 20px;
+  border-radius: 0 12px 12px 0;
+  color: #92400e;
+  font-size: 14.5px;
+}
+
+.markdown-body blockquote p {
+  margin: 0;
+}
+
+/* Khung tiêu đề câu hỏi trong phần Giải thích AI */
+.q-analysis-header {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #eff6ff;
+  border-radius: 16px;
+  border-left: 5px solid #3b82f6;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+}
 
 .q-analysis-header h4 {
   margin: 0 0 10px 0;
@@ -4997,17 +5189,20 @@ body.dark-mode .move-item.back-item .move-item-icon {
 }
 
 .active-header-left {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 16px;
-  min-width: 250px;
+  min-width: 0;
+  max-width: 380px;
+  overflow: hidden;
 }
 
 .active-header-icon {
   font-size: 38px;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  flex-shrink: 0;
 }
 
 .active-header-title {
@@ -5031,7 +5226,7 @@ body.dark-mode .move-item.back-item .move-item-icon {
   font-size: 18px;
   font-weight: 800;
   color: #0f172a;
-  max-width: 320px;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5086,7 +5281,7 @@ body.dark-mode .move-item.back-item .move-item-icon {
 }
 
 .active-header-right {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -7347,16 +7542,15 @@ body.exam-taking .exam-active-header {
   width: 100%;
 }
 
-.active-header-left,
-.active-header-center,
-.active-header-right {
-  min-width: 0 !important;
-}
-
 .active-header-left {
+  flex: 1 1 0;
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
+  justify-content: flex-start;
+  gap: 16px !important;
+  min-width: 0;
+  max-width: 380px;
+  overflow: hidden;
 }
 
 .active-header-icon {
@@ -7367,6 +7561,7 @@ body.exam-taking .exam-active-header {
   border-radius: 14px;
   background: #eff6ff;
   font-size: 25px !important;
+  flex-shrink: 0;
 }
 
 .active-header-title {
@@ -7386,6 +7581,9 @@ body.exam-taking .exam-active-header {
   color: #111827 !important;
   font-size: 16px !important;
   line-height: 1.25 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .active-header-center {
@@ -7425,10 +7623,12 @@ body.exam-taking .exam-active-header {
 }
 
 .active-header-right {
+  flex: 1 1 0;
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
   gap: 8px !important;
+  min-width: 0;
 }
 
 .exam-menu-btn {
