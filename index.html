@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MindQuiz - Ôn tập thông minh & AI Tutor</title>
-    <link rel="stylesheet" href="style.css?v=5.8" />
-    <link rel="stylesheet" href="style-darkmode.css?v=5.8" />
+    <link rel="stylesheet" href="style.css?v=6.0" />
+    <link rel="stylesheet" href="style-darkmode.css?v=6.0" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -177,22 +177,22 @@
               <section class="home-hero">
                 <div class="home-hero-copy">
                   <span class="home-kicker">MindQuiz Workspace</span>
-                  <h2>Luyện đề tập trung, theo dõi tiến bộ rõ ràng</h2>
-                  <p>Chọn đề từ máy hoặc Kho Đề, đặt thời gian và bắt đầu phiên làm bài ngay trên cùng một màn hình.</p>
+                  <h2>🎯 Luyện đề tập trung, theo dõi tiến bộ rõ ràng</h2>
+                  <p>📝 Chọn đề từ máy hoặc Kho Đề, đặt thời gian và bắt đầu phiên làm bài ngay trên cùng một màn hình.</p>
                   <div class="home-actions">
                     <button class="home-primary-action" type="button" onclick="document.getElementById('fileInput').click()">
-                      <i data-lucide="file-up"></i>
+                    <span class="emoji-pop">📄</span>
                       <span>Tải đề JSON</span>
                     </button>
                     <button class="home-secondary-action" type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
-                      <i data-lucide="database"></i>
+                    <span class="emoji-pop">🗂️</span>
                       <span>Mở Kho Đề</span>
                     </button>
                   </div>
                 </div>
                 <div class="home-focus-panel">
                   <div class="focus-ring">
-                    <i data-lucide="target"></i>
+                    <span class="emoji-pulse">🎯</span>
                   </div>
                   <div>
                     <span>Phiên luyện tập</span>
@@ -202,18 +202,18 @@
               </section>
               <section class="home-grid">
                 <article class="home-card">
-                  <i data-lucide="folder-open"></i>
-                  <span>Nguồn đề</span>
+                  <span class="home-card-emoji emoji-pop">🗂️</span>
+                  <span>🗂️ Nguồn đề</span>
                   <strong>Local / Cloud</strong>
                 </article>
                 <article class="home-card">
-                  <i data-lucide="timer"></i>
-                  <span>Thời lượng</span>
+                  <span class="home-card-emoji emoji-pop">⏱️</span>
+                  <span>⏱️ Thời lượng</span>
                   <strong><span id="homeTimePreview">15</span> phút</strong>
                 </article>
                 <article class="home-card">
-                  <i data-lucide="chart-no-axes-column-increasing"></i>
-                  <span>Lịch sử</span>
+                  <span class="home-card-emoji emoji-pop">📈</span>
+                  <span>📈 Lịch sử</span>
                   <strong>Có phân tích</strong>
                 </article>
               </section>
@@ -798,7 +798,7 @@
       const provider = new firebase.auth.GoogleAuthProvider();
     </script>
 
-    <script type="module" src="app.js?v=5.8"></script>
+    <script type="module" src="app.js?v=6.0"></script>
       <!-- AI CHAT MODAL — Hội thoại với Gia sư AI -->
     <div id="aiChatModal" class="aic-modal" onclick="if(event.target===this)window.closeAIChatModal()">
       <div class="aic-panel">

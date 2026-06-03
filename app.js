@@ -1413,7 +1413,7 @@ function generateQuiz() {
     // Nút hỏi AI (ẩn mặc định, chỉ hiện sau khi nộp bài)
     html += `
       <div class="post-grade-actions" id="actions-${index}" style="display:none;">
-        <button class="btn-ask-ai" onclick="window.askAIForQuestion(${index})">✨ Hỏi AI Giải Thích</button>
+        <button class="btn-ask-ai" onclick="window.askAIForQuestion(${index})">💬 Trò chuyện với AI</button>
       </div>
     `;
 
@@ -1702,6 +1702,8 @@ window.resetExam = async function () {
     setHeaderMode("setup");
     renderHomeScreen();
     document.getElementById("result").textContent = "";
+    document.getElementById("topResult").style.display = "none";
+    document.getElementById("topResult").textContent = "--%";
     document.getElementById("btnGradeHeader").style.display = "none";
     document.getElementById("btnGradeNav").style.display = "none";
     const activeGrade = document.getElementById("btnActiveGrade");
@@ -1823,7 +1825,6 @@ function renderAIContent(attemptData) {
   const reAnalyzeBtn = document.getElementById("btnReAnalyzeAI");
   const loading = document.getElementById("aiLoading");
 
-  // FIX LỖI LOADING
   aiResultBox.style.display = "none";
   aiResultBox.classList.remove("is-loading");
   if (loading) loading.style.display = "none";
@@ -1831,36 +1832,59 @@ function renderAIContent(attemptData) {
   aiContent.innerHTML = "";
   expandBtn.style.display = "none";
   reAnalyzeBtn.style.display = "none";
+  aiResultBox.classList.remove("modern-ai-ready", "modern-ai-empty");
+  aiBtn.classList.add("modern-ai-action");
 
   if (attemptData.aiAnalysis) {
     aiResultBox.style.display = "block";
-    aiContent.innerHTML = attemptData.aiAnalysis;
+    aiResultBox.classList.add("modern-ai-ready");
 
     let cleanHtml = attemptData.aiAnalysis;
-    // Xóa mọi thẻ <style>...</style> nếu còn sót lại trong database
     cleanHtml = cleanHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
 
-    aiContent.innerHTML = cleanHtml;
+    aiContent.innerHTML = `
+      <div class="modern-ai-report">
+        <div class="modern-ai-report__head">
+          <span>🤖</span>
+          <div>
+            <strong>Báo cáo AI đã sẵn sàng</strong>
+            <small>Dựa trên lần làm bài bạn đang chọn</small>
+          </div>
+        </div>
+        <div class="modern-ai-report__body">${cleanHtml}</div>
+      </div>
+    `;
 
-    expandBtn.style.display = "block";
-    reAnalyzeBtn.style.display = "block";
-    aiBtn.textContent = "✅ Đã có lời giải (Đã lưu)";
+    expandBtn.style.display = "inline-flex";
+    reAnalyzeBtn.style.display = "inline-flex";
+    aiBtn.textContent = "✅ Đã có phân tích";
     aiBtn.disabled = true;
-    aiBtn.style.background = "#cbd5e1";
-    aiBtn.style.cursor = "default";
-    aiBtn.style.boxShadow = "none";
+    aiBtn.removeAttribute("style");
   } else {
+    aiResultBox.style.display = "block";
+    aiResultBox.classList.add("modern-ai-empty");
+    aiContent.innerHTML = `
+      <div class="modern-ai-placeholder">
+        <span>🧠</span>
+        <strong>Chưa có phân tích AI cho lần làm này</strong>
+        <p>Nhấn nút bên phải để AI đọc các câu sai, tìm lỗ hổng kiến thức và gợi ý cách ôn lại.</p>
+      </div>
+    `;
     aiBtn.disabled = false;
-    aiBtn.style.background = "linear-gradient(135deg, #8b5cf6, #d946ef)";
-    aiBtn.style.cursor = "pointer";
-    aiBtn.style.boxShadow = "0 4px 10px rgba(139, 92, 246, 0.3)";
+    aiBtn.removeAttribute("style");
     aiBtn.textContent = "✨ Phân tích lỗi sai";
 
     const mistakes = (attemptData.details || []).filter((q) => !q.s);
     if (mistakes.length === 0) {
       aiBtn.textContent = "🎉 Lần này đúng 100%!";
       aiBtn.disabled = true;
-      aiBtn.style.background = "#10b981";
+      aiContent.innerHTML = `
+        <div class="modern-ai-placeholder success">
+          <span>🎉</span>
+          <strong>Không có lỗi sai để phân tích</strong>
+          <p>Lần làm này đạt 100%, bạn có thể xem lại timeline hoặc tiếp tục luyện đề khác.</p>
+        </div>
+      `;
     }
   }
 }
@@ -1925,6 +1949,8 @@ async function analyzeWithGemini(forceUpdate = false) {
   }));
 
   resultBox.style.display = "block";
+  resultBox.classList.remove("modern-ai-ready", "modern-ai-empty");
+  resultBox.classList.add("modern-ai-ready", "is-loading");
   if (loading) loading.style.display = "flex";
   content.innerHTML = "";
 
@@ -1957,6 +1983,8 @@ async function analyzeWithGemini(forceUpdate = false) {
   const result = await callAI(prompt);
 
   if (result.text) {
+    resultBox.classList.remove("is-loading");
+    if (loading) loading.style.display = "none";
     let finalHtml = result.text;
     if (window.marked) finalHtml = marked.parse(result.text);
 
@@ -1982,6 +2010,7 @@ async function analyzeWithGemini(forceUpdate = false) {
 
     renderAIContent(targetAttempt);
   } else {
+    resultBox.classList.remove("is-loading");
     content.innerHTML = `<p style="color:red; text-align:center; padding:20px;">❌ ${result.error}</p>`;
     aiBtn.disabled = false;
     aiBtn.textContent = "Thử lại";
@@ -2089,127 +2118,19 @@ window.askAIForQuestion = async function (index) {
   const q = questionsData[index];
   if (!q) return;
 
-  const user = auth.currentUser;
-  const qKey = getSmartKey(q.question);
-  const aiBox = document.getElementById("aiResultBox");
-  const content = document.getElementById("aiContent");
-  const loading = document.getElementById("aiLoading");
-
-  // --- BƯỚC 1: KIỂM TRA CACHE TỪ FIRESTORE ---
-  if (user) {
-    try {
-      const cacheDoc = await db.collection("users").doc(user.uid).collection("ai_explanations").doc(qKey).get();
-      if (cacheDoc.exists) {
-        const data = cacheDoc.data();
-        const cacheTime = data.timestamp ? data.timestamp.toDate().getTime() : 0;
-        const diffDays = (Date.now() - cacheTime) / (1000 * 60 * 60 * 24);
-
-        if (diffDays <= 15) {
-          console.log("🚀 Lấy lời giải từ Cache Firestore (Chưa quá 15 ngày)");
-          showAIResult(index, q.question, data.content);
-          return;
-        } else {
-          console.log("⏳ Cache đã quá 15 ngày, đang làm mới...");
-        }
-      }
-    } catch (e) {
-      console.warn("Lỗi kiểm tra AI Cache:", e);
-    }
-  }
-
-  // --- BƯỚC 2: CHỌN MODEL ---
-  const useGroq = await cloudAlert({
-    type: 'confirm',
-    title: 'Chọn AI Giải Đáp',
-    message: `Bạn muốn dùng AI nào để giải thích Câu ${index + 1}?`,
-    confirmText: 'Groq (Siêu nhanh)',
-    cancelText: 'Gemini (Google)',
-    icon: '✨'
-  });
-  
-  if (useGroq === null) return; // Người dùng nhấn Hủy
-
-  AI_PROVIDER = useGroq ? "groq" : "gemini";
-  updateAIUI();
-
-  // Lấy tên môn học từ UI
-  const examNameElem = document.getElementById("examName");
-  const currentExamName = examNameElem ? examNameElem.textContent : "Đề thi";
-
   const keys = AI_PROVIDER === "gemini" ? API_KEYS : GROQ_KEYS;
   if (!keys || keys.length === 0) {
     window.promptForKeys();
     return;
   }
 
-  // --- BƯỚC 3: CHUẨN BỊ UI & ABORT CONTROLLER ---
-  if (aiAbortController) aiAbortController.abort(); // Hủy yêu cầu cũ nếu có
-  aiAbortController = new AbortController();
-
-  if (!aiBox.classList.contains("expanded")) {
-    document.body.appendChild(aiBox);
-    aiBox.classList.add("expanded");
-    document.body.classList.add("ai-open");
-  }
-
-  aiBox.style.display = "block";
-  aiBox.classList.add("is-loading"); // Hiện loading mới
-  if (loading) loading.style.display = "flex";
-  content.innerHTML = "";
-
-  const prompt = `
-    Bạn là chuyên gia luyện thi đỉnh cao môn "${currentExamName || 'này'}". 
-    Nhiệm vụ của bạn là giải thích câu hỏi trắc nghiệm một cách TRỰC DIỆN, NGẮN GỌN và KHOA HỌC nhất.
-    TUYỆT ĐỐI KHÔNG chào hỏi, KHÔNG nói câu thừa. Hãy bắt đầu ngay vào nội dung.
-    
-    Câu hỏi: ${q.question}
-    Các phương án:
-    ${q.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join("\n")}
-    
-    Đáp án chuẩn xác là: ${q.answer}
-    
-    BẮT BUỘC trình bày theo đúng định dạng Markdown sau:
-    
-    ### ✅ ĐÁP ÁN CHUẨN: **${q.answer}**
-    (Viết 1-2 câu giải thích đi thẳng vào bản chất: Vì sao đây là đáp án đúng).
-    
-    ### 🎯 TẠI SAO CÁC CÂU KIA SAI?
-    (Dùng gạch đầu dòng "-" để phân tích cực ngắn gọn các phương án còn lại. Tại sao nó sai? Nó đánh lừa ở điểm nào? Nhớ bôi đậm **(từ khóa)** điểm sai đó).
-    
-    > 💡 **MẸO GHI NHỚ:**
-    > (Cho 1 mẹo nhỏ, câu thần chú, từ khóa hoặc quy tắc loại trừ để làm nhanh dạng câu này).
-  `;
-
-  try {
-    const result = await callAI(prompt, aiAbortController.signal);
-    aiBox.classList.remove("is-loading");
-    if (loading) loading.style.display = "none";
-
-    if (result.text) {
-      let finalHtml = window.marked ? marked.parse(result.text) : result.text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      
-      // Lưu vào Firestore Cache
-      if (user) {
-        db.collection("users").doc(user.uid).collection("ai_explanations").doc(qKey).set({
-          content: finalHtml,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          q: q.question
-        }).catch(e => console.error("Lỗi lưu AI Cache:", e));
-      }
-
-      showAIResult(index, q.question, finalHtml);
-    } else {
-      content.innerHTML = `<div style="text-align:center; padding: 40px; color:#ef4444;"><p>❌ ${result.error}</p></div>`;
-    }
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      console.log("🛑 Yêu cầu AI đã bị hủy bởi người dùng.");
-    } else {
-      console.error("Lỗi AI:", err);
-      aiBox.classList.remove("is-loading");
-      content.innerHTML = `<div style="text-align:center; padding: 40px; color:#ef4444;"><p>❌ Lỗi kết nối AI</p></div>`;
-    }
-  }
+  const qKey = getSmartKey(q.question);
+  window.openAIChatModal(qKey, {
+    question: q.question || "",
+    options: Array.isArray(q.options) ? q.options : [],
+    answer: q.answer || "",
+    explain: q.explain || "",
+  });
 };
 
 // Hàm phụ để hiển thị kết quả AI (tránh lặp code)
@@ -2254,44 +2175,83 @@ function renderChart(examName, data) {
   const chartBox = document.getElementById("chartContainer");
   const statsBox = document.getElementById("chartStats");
   const msgBox = document.getElementById("chartMessage");
-  const ctx = document.getElementById("scoreChart").getContext("2d");
+  const canvas = document.getElementById("scoreChart");
+  const ctx = canvas ? canvas.getContext("2d") : null;
 
   let myHist = data.filter(
     (h) => h.examName === examName || h.examName.includes(examName)
   );
 
-  myHist.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+  const getTime = (item) => {
+    if (!item) return 0;
+    if (item.timestamp?.seconds) return item.timestamp.seconds * 1000;
+    if (typeof item.timestamp === "number") return item.timestamp;
+    if (item.date) return new Date(item.date).getTime() || 0;
+    if (item.dateStr) return new Date(item.dateStr).getTime() || 0;
+    return 0;
+  };
 
-  if (myHist.length < 2) {
-    chartBox.style.display = "none";
-    statsBox.style.display = "none";
-    msgBox.style.display = "block";
-  } else {
-    chartBox.style.display = "block";
-    statsBox.style.display = "flex";
-    msgBox.style.display = "none";
+  myHist.sort((a, b) => getTime(b) - getTime(a));
 
-    const bestAttempt = [...myHist].sort((a, b) => b.score - a.score)[0];
-    const recentAttempt = myHist[0];
+  if (!myHist.length) {
+    if (chartBox) chartBox.style.display = "none";
+    if (statsBox) {
+      statsBox.style.display = "grid";
+      statsBox.innerHTML = `<div class="modern-empty-state">📭 Chưa có dữ liệu làm bài cho đề này.</div>`;
+    }
+    if (msgBox) msgBox.style.display = "none";
+    return;
+  }
 
+  const recentAttempt = myHist[0];
+  const bestAttempt = [...myHist].sort((a, b) => (b.percent || 0) - (a.percent || 0))[0];
+  const oldestAttempt = myHist[myHist.length - 1];
+  const avgPercent = Math.round(myHist.reduce((sum, h) => sum + (h.percent || 0), 0) / myHist.length);
+  const avgWrong = Math.round(myHist.reduce((sum, h) => sum + Math.max((h.total || 0) - (h.score || 0), 0), 0) / myHist.length);
+  const delta = (recentAttempt.percent || 0) - (oldestAttempt.percent || 0);
+  const deltaLabel = delta > 0 ? `+${delta}%` : `${delta}%`;
+  const trendText = delta > 0 ? "Đang tiến bộ" : delta < 0 ? "Cần kéo lại nhịp" : "Ổn định";
+  const trendIcon = delta > 0 ? "📈" : delta < 0 ? "📉" : "➖";
+
+  if (statsBox) {
+    statsBox.style.display = "grid";
     statsBox.innerHTML = `
-        <div class="c-stat-box">
-        <div class="c-stat-label">Lần gần nhất</div>
-        <div class="c-stat-val">${recentAttempt.score}/${recentAttempt.total} câu</div>
-        <div class="c-stat-sub">(${recentAttempt.percent}%)</div>
-        </div>
-        <div class="c-stat-box best">
-        <div class="c-stat-label">Cao nhất</div>
-        <div class="c-stat-val">${bestAttempt.score}/${bestAttempt.total} câu</div>
-        <div class="c-stat-sub">(${bestAttempt.percent}%)</div>
-        </div>
+      <div class="modern-stat-card accent-blue">
+        <span>🎯 Lần gần nhất</span>
+        <strong>${recentAttempt.percent || 0}%</strong>
+        <small>${recentAttempt.score || 0}/${recentAttempt.total || 0} câu đúng</small>
+      </div>
+      <div class="modern-stat-card accent-green">
+        <span>🏆 Cao nhất</span>
+        <strong>${bestAttempt.percent || 0}%</strong>
+        <small>${bestAttempt.score || 0}/${bestAttempt.total || 0} câu đúng</small>
+      </div>
+      <div class="modern-stat-card accent-amber">
+        <span>${trendIcon} Xu hướng</span>
+        <strong>${deltaLabel}</strong>
+        <small>${trendText}</small>
+      </div>
+      <div class="modern-stat-card accent-red">
+        <span>🧩 Sai trung bình</span>
+        <strong>${avgWrong}</strong>
+        <small>Khoảng ${avgPercent}% trung bình</small>
+      </div>
     `;
+  }
 
+  if (!ctx || typeof Chart === "undefined" || myHist.length < 2) {
+    if (chartBox) chartBox.style.display = "none";
+    if (msgBox) {
+      msgBox.style.display = "block";
+      msgBox.innerHTML = "📊 Cần ít nhất 2 lần làm bài để vẽ đường tiến bộ.";
+    }
+  } else {
+    if (chartBox) chartBox.style.display = "block";
+    if (msgBox) msgBox.style.display = "none";
     const chartData = [...myHist].reverse();
     const labels = chartData.map((_, index) => `Lần ${index + 1}`);
-    const scores = chartData.map((h) => h.score);
-    const totals = chartData.map((h) => h.total);
-    const maxQuestions = Math.max(...totals);
+    const percents = chartData.map((h) => h.percent || 0);
+    const scores = chartData.map((h) => `${h.score || 0}/${h.total || 0}`);
 
     if (scoreChart) {
       scoreChart.destroy();
@@ -2302,14 +2262,17 @@ function renderChart(examName, data) {
         labels: labels,
         datasets: [
           {
-            label: "Số câu đúng",
-            data: scores,
+            label: "Tỷ lệ đúng",
+            data: percents,
             borderColor: "#3b82f6",
-            backgroundColor: "rgba(59, 130, 246, 0.1)",
-            borderWidth: 2,
+            backgroundColor: "rgba(59, 130, 246, 0.14)",
+            borderWidth: 3,
             pointBackgroundColor: "#2563eb",
-            pointRadius: 5,
-            tension: 0.3,
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 7,
+            tension: 0.38,
             fill: true,
           },
         ],
@@ -2317,21 +2280,28 @@ function renderChart(examName, data) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => `${context.parsed.y}% (${scores[context.dataIndex]})`,
+            },
+          },
+        },
         scales: {
           y: {
             beginAtZero: true,
-            suggestedMax: maxQuestions,
-            ticks: { stepSize: 5, precision: 0 },
+            suggestedMax: 100,
+            max: 100,
+            ticks: { callback: (value) => `${value}%`, stepSize: 20 },
             grid: { color: "#f1f5f9" },
           },
-          x: { grid: { display: false } },
+          x: { grid: { display: false }, ticks: { maxRotation: 0 } },
         },
       },
     });
   }
 
-  // LOGIC DROPDOWN CHỌN LẦN LÀM BÀI
   const aiSelect = document.getElementById("aiHistorySelect");
 
   if (myHist.length > 0) {
@@ -2884,9 +2854,6 @@ document.addEventListener("DOMContentLoaded", () => {
     aiBox.onclick = (e) => {
       if (aiBox.classList.contains("expanded")) {
         if (e.target === aiBox) toggleExpand();
-      } else {
-        if (!e.target.classList.contains("btn-close-ai-expanded"))
-          toggleExpand();
       }
     };
   }
@@ -4354,6 +4321,7 @@ Hãy trả lời trực tiếp, ngắn gọn (tối đa 200 từ), đúng trọn
 
 // ── Chuyển Markdown đơn giản → HTML ──
 window._mdToHtml = function(text) {
+  if (window.marked) return marked.parse(text || "");
   return text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')  // escape trước
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
