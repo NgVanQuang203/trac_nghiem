@@ -14,18 +14,28 @@ let GROQ_KEYS = [];
 let currentGroqKeyIndex = 0;
 
 function updateAIUI() {
-  const label = document.getElementById("activeAIProviderLabel");
-  if (label) {
-    label.textContent = AI_PROVIDER.toUpperCase();
+  const select = document.getElementById("activeAIProviderSelect");
+  if (select) {
+    select.value = AI_PROVIDER;
     if (AI_PROVIDER === "groq") {
-      label.style.background = "#fef3c7";
-      label.style.color = "#92400e";
+      select.style.background = "#fef3c7";
+      select.style.color = "#92400e";
     } else {
-      label.style.background = "#e0e7ff";
-      label.style.color = "#4338ca";
+      select.style.background = "#e0e7ff";
+      select.style.color = "#4338ca";
     }
   }
 }
+
+window.switchMainAIProvider = function (provider) {
+  AI_PROVIDER = provider;
+  updateAIUI();
+  // Đồng bộ với Chat Modal nếu có
+  const chatSelect = document.getElementById("aiChatProviderSelect");
+  if (chatSelect) {
+    chatSelect.value = provider;
+  }
+};
 
 // Hệ thống bảo vệ Focus để sửa lỗi nhảy App trên Windows
 window.forceFocusBack = function () {
@@ -1977,16 +1987,8 @@ async function analyzeWithGemini(forceUpdate = false) {
   const reAnalyzeBtn = document.getElementById("btnReAnalyzeAI");
   const aiSelect = document.getElementById("aiHistorySelect");
 
-  // BƯỚC MỚI: Hỏi chọn Model nào
-  const useGroq = await cloudAlert({
-    type: 'confirm',
-    title: 'Chọn AI Phân Tích',
-    message: 'Bạn muốn dùng trí tuệ nhân tạo nào để phân tích bài thi này?',
-    confirmText: 'Groq (Siêu nhanh)',
-    cancelText: 'Gemini (Google)',
-    icon: '🤖'
-  });
-  AI_PROVIDER = useGroq ? "groq" : "gemini";
+  // (BƯỚC MỚI: Người dùng chọn trực tiếp qua dropdown activeAIProviderSelect, 
+  // không cần hiện cloudAlert khó chịu nữa)
   updateAIUI();
 
   // Lấy tên môn học từ UI
@@ -2936,16 +2938,32 @@ document.addEventListener("DOMContentLoaded", () => {
       aiBox.classList.remove("is-loading");
       document.body.classList.remove("ai-open");
       aiSectionParent.appendChild(aiBox);
-      if (expandBtn) expandBtn.style.display = "block";
+      if (expandBtn) expandBtn.style.display = "inline-flex";
     }
   };
 
-  if (expandBtn) expandBtn.onclick = toggleExpand;
-  if (closeExpandedBtn) closeExpandedBtn.onclick = toggleExpand;
+  if (expandBtn) {
+    expandBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleExpand();
+    };
+  }
+  if (closeExpandedBtn) {
+    closeExpandedBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleExpand();
+    };
+  }
   if (aiBox) {
     aiBox.onclick = (e) => {
+      if (e.target.closest('button')) return; // Bỏ qua nếu click vào các nút bên trong
+      
       if (aiBox.classList.contains("expanded")) {
+        // Chỉ đóng nếu click trúng phần nền tối (chứ không phải nội dung bên trong)
         if (e.target === aiBox) toggleExpand();
+      } else {
+        // Nếu chưa phóng to, click vào đâu trong box cũng phóng to
+        toggleExpand();
       }
     };
   }
@@ -3774,6 +3792,48 @@ window.openExamReview = async function(historyId) {
 window.closeExamReviewPage = function() {
   document.getElementById('examReviewPage').style.display = 'none';
   window.showHistory();
+};
+
+// ── Cuộn đến câu hỏi trong trang xem lại ──
+window.scrollToReviewQ = function(index) {
+  const card = document.getElementById('erp-q-' + index);
+  if (!card) return;
+
+  // Đóng panel nav nếu đang mở trên mobile
+  const nav = document.getElementById('erpQuestionNav');
+  if (nav && nav.classList.contains('active')) {
+    window.toggleErpNav();
+  }
+
+  // Highlight hiệu ứng nhấn
+  card.classList.add('erp-card--highlight');
+  setTimeout(() => card.classList.remove('erp-card--highlight'), 1500);
+
+  // Smooth scroll trong erp-body
+  const body = card.closest('.erp-body');
+  if (body) {
+    const offset = card.offsetTop - body.offsetTop - 12;
+    body.scrollTo({ top: offset, behavior: 'smooth' });
+  } else {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+};
+
+// ── Thu gọn / Mở rộng bảng danh sách câu hỏi ──
+window.toggleErpNav = function() {
+  const nav = document.getElementById('erpQuestionNav');
+  if (!nav) return;
+  const isVisible = nav.classList.contains('active');
+  
+  if (isVisible) {
+    nav.classList.remove('active');
+    setTimeout(() => nav.style.display = 'none', 300);
+  } else {
+    nav.style.display = 'block';
+    // Force reflow
+    void nav.offsetWidth;
+    nav.classList.add('active');
+  }
 };
 
 // ── Mở AI Gia sư từ trang xem lại ──
@@ -4758,7 +4818,7 @@ window.openExamReview = async function(historyId) {
         : '';
 
       cardsHtml += `
-        <div class="erp-card ${mod}">
+        <div class="erp-card ${mod}" id="erp-q-${i}">
           <div class="erp-card__strip"></div>
           <div class="erp-card__body">
             <div class="erp-card__row">
@@ -4809,4 +4869,34 @@ window.openExamReview = async function(historyId) {
     ${cardsHtml}`;
 
   document.getElementById('examReviewContent').parentElement.scrollTop = 0;
+
+  // ── Render Question Navigation Grid ──
+  const navGrid = document.getElementById('erpNavGrid');
+  const navWrapper = document.getElementById('erpQuestionNav');
+  const navFab = document.getElementById('erpNavFab');
+  const navBadge = document.getElementById('erpNavFabBadge');
+  const navSummary = document.getElementById('erpNavSummary');
+  
+  if (navGrid && details.length) {
+    let navHtml = '';
+    details.forEach((q, i) => {
+      const ok   = !!q.s;
+      const skip = !q.u;
+      const cls  = skip ? 'erp-qnav__btn--skip' : ok ? 'erp-qnav__btn--ok' : 'erp-qnav__btn--bad';
+      navHtml += `<button class="erp-qnav__btn ${cls}" onclick="window.scrollToReviewQ(${i})" title="Câu ${i + 1} — ${skip ? 'Bỏ trống' : ok ? 'Đúng' : 'Sai'}">${i + 1}</button>`;
+    });
+    navGrid.innerHTML = navHtml;
+    
+    if (navBadge) navBadge.textContent = details.length;
+    if (navSummary) navSummary.innerHTML = `<span style="color:#10b981">${cntOk}</span> / <span style="color:#ef4444">${cntBad}</span> / <span style="color:#f59e0b">${cntSkip}</span>`;
+    
+    // Chỉ hiện FAB, ẩn panel ban đầu
+    navWrapper.style.display = 'none';
+    navWrapper.classList.remove('active');
+    if (navFab) navFab.style.display = 'flex';
+  } else {
+    if (navGrid) navGrid.innerHTML = '';
+    if (navWrapper) navWrapper.style.display = 'none';
+    if (navFab) navFab.style.display = 'none';
+  }
 };

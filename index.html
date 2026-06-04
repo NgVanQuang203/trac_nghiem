@@ -395,7 +395,10 @@
                     style="max-width: 200px; font-size: 13px"
                   ></select>
 
-                  <span id="activeAIProviderLabel" style="font-size: 10px; padding: 2px 8px; background: #e0e7ff; color: #4338ca; border-radius: 12px; font-weight: 700; text-transform: uppercase; margin-left: 5px;">Gemini</span>
+                  <select id="activeAIProviderSelect" onchange="window.switchMainAIProvider(this.value)" style="font-size: 11px; padding: 2px 8px; background: #e0e7ff; color: #4338ca; border-radius: 12px; font-weight: 700; text-transform: uppercase; margin-left: 5px; border: none; outline: none; cursor: pointer;">
+                    <option value="gemini">Gemini</option>
+                    <option value="groq">Groq</option>
+                  </select>
 
                   <button
                     id="btnExpandAI"
@@ -770,6 +773,34 @@
 
         <div class="erp-score-pill" id="reviewPageScoreBadge"></div>
       </header>
+
+      <!-- Floating Question Nav Panel -->
+      <div class="erp-qnav" id="erpQuestionNav" style="display:none;">
+        <!-- Backdrop (mobile) -->
+        <div class="erp-qnav__backdrop" id="erpNavBackdrop" onclick="window.toggleErpNav()"></div>
+
+        <!-- Panel -->
+        <div class="erp-qnav__panel" id="erpNavPanel">
+          <div class="erp-qnav__head">
+            <span class="erp-qnav__title">📋 Danh sách câu hỏi</span>
+            <button class="erp-qnav__close" onclick="window.toggleErpNav()" title="Đóng">✕</button>
+          </div>
+          <div class="erp-qnav__legend">
+            <span class="erp-qnav__leg"><span class="erp-qnav__dot erp-qnav__dot--ok"></span>Đúng</span>
+            <span class="erp-qnav__leg"><span class="erp-qnav__dot erp-qnav__dot--bad"></span>Sai</span>
+            <span class="erp-qnav__leg"><span class="erp-qnav__dot erp-qnav__dot--skip"></span>Bỏ trống</span>
+          </div>
+          <div class="erp-qnav__grid" id="erpNavGrid">
+            <!-- JS sẽ render danh sách ô câu hỏi -->
+          </div>
+        </div>
+      </div>
+
+      <!-- FAB button -->
+      <button class="erp-qnav__fab" id="erpNavFab" onclick="window.toggleErpNav()" title="Danh sách câu hỏi" style="display:none;">
+        <span class="erp-qnav__fab-icon">📋</span>
+        <span class="erp-qnav__fab-badge" id="erpNavFabBadge">0</span>
+      </button>
 
       <!-- Body -->
       <div class="erp-body">
