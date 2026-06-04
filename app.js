@@ -2782,11 +2782,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const cloudFileInput = document.getElementById("cloudFileInput");
   if (cloudFileInput) {
     cloudFileInput.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
 
       window.focus();
-      handleCloudFileDropOrSelect(file);
+      handleCloudFileDropOrSelect(files);
       cloudFileInput.value = "";
     };
   }
@@ -2805,27 +2805,69 @@ document.addEventListener("DOMContentLoaded", () => {
     cloudBody.addEventListener("drop", (e) => {
       e.preventDefault();
       cloudBody.classList.remove("drag-over");
-      const file = e.dataTransfer.files[0];
-      if (file && file.name.endsWith(".json")) {
-        handleCloudFileDropOrSelect(file);
-      } else {
-        cloudAlert({ title: 'Lỗi File', message: 'Vui lòng thả file JSON hợp lệ!', icon: '⚠️' });
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleCloudFileDropOrSelect(files);
       }
     });
   }
 
-  async function handleCloudFileDropOrSelect(file) {
-    const defaultName = file.name.replace(/\.json$/i, "");
-    const displayName = await cloudAlert({
-      type: 'prompt',
-      title: 'Tên đề thi',
-      message: 'Nhập tên hiển thị cho đề thi này:',
-      icon: '📝',
-      defaultValue: defaultName
-    });
+  async function handleCloudFileDropOrSelect(files) {
+    if (!files) return;
+    const fileArray = (files instanceof FileList) ? Array.from(files) : (Array.isArray(files) ? files : [files]);
+    const validFiles = fileArray.filter(f => f.name.endsWith(".json"));
+    
+    if (validFiles.length === 0) {
+       cloudAlert({ title: 'Lỗi File', message: 'Vui lòng chọn file JSON hợp lệ!', icon: '⚠️' });
+       return;
+    }
 
-    if (displayName !== null) {
-      uploadJsonToCloud(file, displayName.trim() || defaultName);
+    if (validFiles.length === 1) {
+      const file = validFiles[0];
+      const defaultName = file.name.replace(/\.json$/i, "");
+      const displayName = await cloudAlert({
+        type: 'prompt',
+        title: 'Tên đề thi',
+        message: 'Nhập tên hiển thị cho đề thi này:',
+        icon: '📝',
+        defaultValue: defaultName
+      });
+
+      if (displayName !== null) {
+        uploadJsonToCloud(file, displayName.trim() || defaultName);
+      }
+    } else {
+      const confirmUpload = await cloudAlert({
+        type: 'confirm',
+        title: 'Tải lên nhiều đề',
+        message: `Bạn đang tải lên ${validFiles.length} đề thi. Tên hiển thị sẽ tự động lấy từ tên file. Tiếp tục?`,
+        icon: '📚'
+      });
+      if (confirmUpload) {
+        window.setCloudLoading(true, "Đang tải lên...");
+        let successCount = 0;
+        let failCount = 0;
+        for (const file of validFiles) {
+          try {
+             const text = await file.text();
+             JSON.parse(text);
+             if (text.length > 900000) throw new Error("File quá lớn");
+             await db.collection("users").doc(auth.currentUser.uid).collection("examFiles").add({
+               displayName: file.name.replace(/\.json$/i, ""),
+               fileName: file.name,
+               content: text,
+               folderId: currentFolderId,
+               createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+             });
+             successCount++;
+          } catch(e) {
+             failCount++;
+          }
+        }
+        window.setCloudLoading(false);
+        cloudAlert({ title: 'Hoàn tất', message: `Tải lên thành công: ${successCount} đề. Lỗi: ${failCount} đề.`, icon: '✅' });
+        loadCloudDirectory();
+      }
     }
   }
 

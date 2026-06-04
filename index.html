@@ -75,7 +75,7 @@
                   <span class="menu-emoji emoji-pop" aria-hidden="true">📄</span>
                   <span>Chọn File</span>
                 </button>
-                <input type="file" id="fileInput" class="cloud-file-input" accept=".json" onchange="loadFileFromLocal()" onmousedown="window.forceFocusBack()" />
+                <input type="file" id="fileInput" class="cloud-file-input" accept=".json" multiple onchange="loadFileFromLocal()" onmousedown="window.forceFocusBack()" />
               </div>
               <button
                 class="btn-icon-drive"
@@ -494,7 +494,7 @@
                 <span class="btn-action-icon">⬆️</span>
                 <span class="btn-action-label">Tải lên</span>
               </button>
-              <input type="file" id="cloudFileInput" class="cloud-file-input" accept=".json" onmousedown="window.forceFocusBack()" />
+              <input type="file" id="cloudFileInput" class="cloud-file-input" accept=".json" multiple onmousedown="window.forceFocusBack()" />
             </div>
           </div>
         </div>
