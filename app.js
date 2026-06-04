@@ -1461,6 +1461,7 @@ function generateQuiz() {
   updateProgressBar();
 
   const letters = ["A", "B", "C", "D", "E", "F"];
+  const fragment = document.createDocumentFragment();
 
   questionsData.forEach((q, index) => {
     const card = document.createElement("div");
@@ -1504,19 +1505,20 @@ function generateQuiz() {
     `;
 
     card.innerHTML = html;
-    quizDiv.appendChild(card);
+    fragment.appendChild(card);
 
     // SỰ KIỆN CHỌN ĐÁP ÁN
 
     card.querySelectorAll("input").forEach((inp) => {
       inp.addEventListener("change", () => {
-        // 1. Cập nhật menu bên phải
+        // 1. Cập nhật menu bên phải (Tối ưu truy vấn DOM)
         const btn = document.querySelector(`.qnav-item[data-index="${index}"]`);
         if (btn) {
+          const currentActive = document.querySelector(".qnav-item.nav-active");
+          if (currentActive && currentActive !== btn) {
+            currentActive.classList.remove("nav-active");
+          }
           btn.classList.add("nav-answered", "nav-active");
-          document.querySelectorAll(".qnav-item.nav-active").forEach((item) => {
-            if (item !== btn) item.classList.remove("nav-active");
-          });
         }
 
         // 2. Cập nhật thanh tiến độ
@@ -1603,6 +1605,8 @@ function generateQuiz() {
       });
     });
   });
+  
+  quizDiv.appendChild(fragment);
 
   // Render Nav List (Giữ nguyên logic cũ)
   const listEl = document.getElementById("questionList");
@@ -1614,9 +1618,8 @@ function generateQuiz() {
     btn.dataset.index = i;
     btn.onclick = () => {
       const card = document.querySelector(`.question-card[data-index="${i}"]`);
-      document.querySelectorAll(".qnav-item.nav-active").forEach((item) =>
-        item.classList.remove("nav-active")
-      );
+      const activeItem = document.querySelector(".qnav-item.nav-active");
+      if (activeItem) activeItem.classList.remove("nav-active");
       btn.classList.add("nav-active");
       if (card) {
         card.scrollIntoView({ behavior: "smooth", block: "center" });
