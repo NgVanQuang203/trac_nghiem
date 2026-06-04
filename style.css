@@ -6695,6 +6695,47 @@ body.dark-mode .erp-empty__title { color: var(--text-main); }
 .aic-send-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .aic-hint { font-size: 11px; color: var(--text-muted,#94a3b8); margin-top: 7px; text-align: center; }
 
+/* ── AI PROVIDER SELECTOR ── */
+.aic-provider-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 0 2px;
+}
+.aic-provider-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+}
+.aic-provider-select {
+  padding: 5px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border, #e2e8f0);
+  background: var(--bg-body, #f8fafc);
+  color: var(--text-main, #0f172a);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  cursor: pointer;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+.aic-provider-select:focus {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.aic-provider-select:hover {
+  border-color: var(--primary, #3b82f6);
+}
+
 /* ── DARK MODE ── */
 body.dark-mode .aic-panel { background: var(--bg-card); }
 body.dark-mode .aic-header { border-color: var(--border); }
@@ -7903,6 +7944,7 @@ body.dark-mode .aic-btn-icon { background: var(--bg-body); border-color: var(--b
 body.dark-mode .aic-msg--ai .aic-bubble__text { background: var(--bg-body); color: var(--text-main); border-color: var(--border); }
 body.dark-mode .aic-input { background: var(--bg-body); border-color: var(--border); color: var(--text-main); }
 body.dark-mode .aic-footer { background: var(--bg-card); border-color: var(--border); }
+body.dark-mode .aic-provider-select { background: var(--bg-body); border-color: var(--border); color: var(--text-main); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 640px) {

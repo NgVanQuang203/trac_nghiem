@@ -678,7 +678,7 @@
         
         <div class="ai-tutor-modal-footer">
           <div class="ai-chat-input-row">
-            <input type="text" id="aiChatInput" placeholder="Hỏi thêm Gia sư AI..." onkeydown="if(event.key === 'Enter') window.sendAIChatMessage()" />
+            <input type="text" id="aiTutorChatInput" placeholder="Hỏi thêm Gia sư AI..." onkeydown="if(event.key === 'Enter') window.sendAIChatMessage()" />
             <button class="btn-cartoon btn-3d-blue btn-send-ai-chat" onclick="window.sendAIChatMessage()">
               <span>Gửi 🚀</span>
             </button>
@@ -840,6 +840,13 @@
                 <path d="M16 9L2 2L5 9L2 16L16 9Z" fill="white"/>
               </svg>
             </button>
+          </div>
+          <div class="aic-provider-row">
+            <span class="aic-provider-label">🤖 AI:</span>
+            <select id="aiChatProviderSelect" class="aic-provider-select" onchange="window._switchChatAIProvider(this.value)">
+              <option value="gemini">Gemini (Google)</option>
+              <option value="groq">Groq (Llama)</option>
+            </select>
           </div>
           <p class="aic-hint">Enter để gửi · Shift+Enter để xuống dòng</p>
         </div>

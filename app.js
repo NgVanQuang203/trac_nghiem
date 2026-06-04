@@ -4275,6 +4275,7 @@ window.openAIChatModal = async function(qKey, qData) {
     window._renderAIChat();
   }
 
+  window._syncChatProviderSelect();
   setTimeout(() => document.getElementById('aiChatInput').focus(), 200);
 };
 
@@ -4554,6 +4555,21 @@ window._aiChatInput = function(e) {
   const el = e.target;
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+};
+
+// ── Đổi AI provider trong chat ──
+window._switchChatAIProvider = function(provider) {
+  if (provider === 'gemini' || provider === 'groq') {
+    AI_PROVIDER = provider;
+    updateAIUI();
+    console.log('[AIChatModal] Switched to:', provider);
+  }
+};
+
+// ── Đồng bộ dropdown chọn AI khi mở modal ──
+window._syncChatProviderSelect = function() {
+  const sel = document.getElementById('aiChatProviderSelect');
+  if (sel) sel.value = AI_PROVIDER;
 };
 
 
