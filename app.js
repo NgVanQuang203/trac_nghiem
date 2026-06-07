@@ -637,6 +637,114 @@ window.startExamNow = async function () {
   document.getElementById("topResult").style.display = "none";
 };
 
+window.openImportJsonModal = function() {
+  document.getElementById('importJsonName').value = '';
+  document.getElementById('importJsonTextarea').value = '';
+  if(window.syncJsonHighlight) window.syncJsonHighlight();
+  document.getElementById('importJsonModal').style.display = 'flex';
+};
+
+window.confirmImportJson = async function() {
+  const defaultName = document.getElementById('importJsonName').value.trim() || 'Đề chưa đặt tên';
+  const jsonStr = document.getElementById('importJsonTextarea').value.trim();
+  
+  if (!jsonStr) {
+    cloudAlert({ title: "Lỗi", message: "Vui lòng nhập nội dung JSON.", icon: "❌" });
+    return;
+  }
+  
+  try {
+    let data = JSON.parse(jsonStr);
+    
+    // Phân tích cấu trúc JSON linh hoạt
+    let examsToSave = [];
+    
+    // Trường hợp 1: JSON là mảng các Đề (mỗi Đề chứa 'questions')
+    if (Array.isArray(data) && data.length > 0 && (data[0].questions || data[0].data)) {
+        examsToSave = data.map((exam, index) => ({
+            name: exam["Đề"] || exam["Tên"] || exam["title"] || exam["name"] || (defaultName + ` - Phần ${index + 1}`),
+            questions: exam.questions || exam.data || []
+        }));
+    } 
+    // Trường hợp 2: JSON là một object chứa 'questions' hoặc 'data'
+    else if (data && !Array.isArray(data) && (data.questions || data.data)) {
+        examsToSave = [{
+            name: data["Đề"] || data["title"] || data.name || defaultName,
+            questions: data.questions || data.data
+        }];
+    } 
+    // Trường hợp 3: JSON là mảng các câu hỏi trực tiếp
+    else if (Array.isArray(data)) {
+        examsToSave = [{
+            name: defaultName,
+            questions: data
+        }];
+    } 
+    // Trường hợp 4: JSON là một object câu hỏi đơn lẻ
+    else if (typeof data === "object") {
+        examsToSave = [{
+            name: defaultName,
+            questions: [data]
+        }];
+    } else {
+        throw new Error("Không tìm thấy danh sách câu hỏi trong JSON.");
+    }
+
+    // Yêu cầu đăng nhập để lưu vào kho đề
+    if (!auth.currentUser) {
+      cloudAlert({ title: "Chưa đăng nhập", message: "Bạn cần đăng nhập để lưu vào Kho Đề.", icon: "🔐" });
+      return;
+    }
+
+    window.setCloudLoading(true, "Đang xử lý và lưu vào Kho Đề...");
+    
+    let savedCount = 0;
+    for (let exam of examsToSave) {
+        if (!Array.isArray(exam.questions) || exam.questions.length === 0) continue;
+        
+        // Chuẩn hóa câu hỏi
+        let qs = exam.questions.map(q => {
+            const normalizedQ = {};
+            for (let key in q) {
+                normalizedQ[key.toLowerCase()] = q[key];
+            }
+            
+            // Xử lý trường hợp thiếu mảng options (rất phổ biến khi copy từ nguồn khác)
+            if (!normalizedQ.options || !Array.isArray(normalizedQ.options)) {
+                // Nếu JSON không có options nhưng có answer, tạo mảng options chứa answer đó để tránh lỗi UI
+                normalizedQ.options = normalizedQ.answer ? [normalizedQ.answer] : ["(Câu hỏi này không có lựa chọn nào)"];
+            }
+            return normalizedQ;
+        });
+        
+        await db.collection("users").doc(auth.currentUser.uid).collection("examFiles").add({
+          displayName: exam.name,
+          fileName: exam.name + ".json",
+          content: JSON.stringify(qs, null, 2),
+          folderId: currentFolderId || null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        savedCount++;
+    }
+    
+    window.setCloudLoading(false);
+    
+    if (savedCount > 0) {
+        document.getElementById('importJsonModal').style.display = 'none';
+        cloudAlert({ title: "Thành công", message: `Đã lưu thành công ${savedCount} bộ đề vào Kho Đề!`, icon: "✅" });
+        if (typeof loadCloudDirectory === "function") {
+          loadCloudDirectory();
+        }
+    } else {
+        cloudAlert({ title: "Thông báo", message: "Không có câu hỏi hợp lệ nào được tìm thấy.", icon: "⚠️" });
+    }
+    
+  } catch (err) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: "Lỗi", message: "JSON không hợp lệ hoặc cấu trúc sai: " + err.message, icon: "❌" });
+  }
+};
+
 window.loadFileFromLocal = function () {
   const fileInput = document.getElementById("fileInput");
   const file = fileInput.files[0];
