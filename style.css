@@ -8691,3 +8691,126 @@ body.exam-taking #examHistorySummary {
     max-width: 78vw;
   }
 }
+
+
+/* IMPORT JSON MODAL */
+.ij-modal-content {
+    max-width: 900px;
+    width: 95%;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    margin: 20px auto;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ij-modal-header {
+    background: #ffffff;
+    padding: 16px 20px;
+    color: #1e293b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+.ij-modal-header h3 {
+    color: #0f172a;
+}
+.ij-modal-header p {
+    color: #64748b !important;
+}
+.ij-modal-header button {
+    color: #64748b !important;
+    background: transparent !important;
+}
+.ij-modal-header button:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+.ij-modal-body {
+    padding: 16px;
+    background: #f8fafc;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 12px;
+}
+.ij-input-name {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 15px;
+    background: white;
+    color: #1e293b;
+    transition: all 0.2s;
+    outline: none;
+    box-sizing: border-box;
+    font-weight: 500;
+}
+.ij-input-name:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+.ij-ide-container {
+    position: relative;
+    flex: 1;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.ij-ide-header {
+    background: #f1f5f9;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+.ij-footer {
+    padding: 16px 20px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-shrink: 0;
+}
+.ij-btn-cancel {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: white;
+    color: #475569;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.ij-btn-cancel:hover {
+    background: #f1f5f9;
+}
+
+
+/* SYNTAX HIGHLIGHT LIGHT THEME */
+#jsonHighlightLayer { color: #334155; }
+.ij-ide-header span { color: #475569 !important; }
+.sh-default { color: #334155; }
+.sh-key { color: #0451a5; }
+.sh-string { color: #a31515; }
+.sh-boolean, .sh-null { color: #0000ff; }
+.sh-number { color: #098658; }
+
+
+/* IDE Caret Color Light Mode */
+#importJsonTextarea {
+    caret-color: #0f172a !important; /* Dark caret for light background */
+}

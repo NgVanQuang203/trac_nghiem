@@ -823,8 +823,8 @@
 
     <!-- Modal: Nhập nội dung JSON -->
     <div id="importJsonModal" class="modal-overlay" style="display: none; z-index: 2000; backdrop-filter: blur(4px);">
-      <div class="modal-content" style="max-width: 900px; width: 95%; height: 90vh; display: flex; flex-direction: column; margin: 20px auto; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
-        <div class="modal-header" style="background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%); padding: 16px 20px; color: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+      <div class="modal-content ij-modal-content">
+        <div class="modal-header ij-modal-header">
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 20px; background: rgba(255,255,255,0.1); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">💻</span>
             <div>
@@ -835,27 +835,27 @@
           <button onclick="document.getElementById('importJsonModal').style.display='none'" style="border: none; background: rgba(255,255,255,0.1); color: white; width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">✕</button>
         </div>
         
-        <div class="modal-body" style="padding: 16px; background: #f8fafc; flex: 1; display: flex; flex-direction: column; overflow: hidden; gap: 12px;">
+        <div class="modal-body ij-modal-body">
           <div style="flex-shrink: 0;">
-            <input type="text" id="importJsonName" placeholder="Tên đề thi (VD: Đề thi Lịch Sử 2026)..." style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 15px; background: white; transition: all 0.2s; outline: none; box-sizing: border-box; font-weight: 500;" onfocus="this.style.borderColor='#4f46e5';" onblur="this.style.borderColor='#cbd5e1';" />
+            <input type="text" id="importJsonName" placeholder="Tên đề thi (VD: Đề thi Lịch Sử 2026)..." class="ij-input-name" />
           </div>
           
-          <div style="position: relative; flex: 1; border-radius: 8px; border: 1px solid #3f3f46; background: #1e1e1e; overflow: hidden; display: flex; flex-direction: column;">
-            <div style="background: #2d2d2d; padding: 8px 12px; border-bottom: 1px solid #3f3f46; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <div class="ij-ide-container">
+            <div class="ij-ide-header">
               <span style="font-size: 12px; color: #a1a1aa; font-family: monospace;">data.json</span>
               <button onclick="window.formatJsonEditor()" style="background: #3b82f6; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">✨ Format JSON</button>
             </div>
             <div style="position: relative; flex: 1; overflow: hidden;">
               <!-- Syntax Highlighting Layer -->
-              <pre id="jsonHighlightLayer" style="margin: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 16px; box-sizing: border-box; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; color: #d4d4d4; overflow: hidden; pointer-events: none; white-space: pre-wrap; word-wrap: break-word;"></pre>
+              <pre id="jsonHighlightLayer" style="margin: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 16px; box-sizing: border-box; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; overflow: hidden; pointer-events: none; white-space: pre-wrap; word-wrap: break-word;"></pre>
               <!-- Transparent Textarea Layer -->
-              <textarea id="importJsonTextarea" spellcheck="false" style="margin: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 16px; box-sizing: border-box; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; color: transparent !important; background: transparent !important; caret-color: white !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; border: none; outline: none; resize: none; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;" oninput="window.syncJsonHighlight()" onscroll="window.syncJsonScroll()"></textarea>
+              <textarea id="importJsonTextarea" spellcheck="false" style="margin: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 16px; box-sizing: border-box; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; color: transparent !important; background: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; border: none; outline: none; resize: none; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;" oninput="window.syncJsonHighlight()" onscroll="window.syncJsonScroll()"></textarea>
             </div>
           </div>
         </div>
         
-        <div style="padding: 16px 20px; background: white; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
-          <button class="btn-outline" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; color: #475569; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('importJsonModal').style.display='none'">Hủy</button>
+        <div class="ij-footer">
+          <button class="btn-outline" class="btn-outline ij-btn-cancel" onclick="document.getElementById('importJsonModal').style.display='none'">Hủy</button>
           <button class="btn-finish" style="background: #4f46e5; color: white; padding: 10px 24px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="window.confirmImportJson()">💾 Lưu vào Kho Đề</button>
         </div>
       </div>
@@ -942,21 +942,21 @@
           }
           json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           return json.replace(/("(\u[a-zA-Z0-9]{4}|\[^u]|[^\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-              var cls = 'color: #d4d4d4;'; // Default (numbers/booleans)
+              var cls = 'sh-default'; // Default (numbers/booleans)
               if (/^"/.test(match)) {
                   if (/:$/.test(match)) {
-                      cls = 'color: #9cdcfe;'; // Key
+                      cls = 'sh-key'; // Key
                   } else {
-                      cls = 'color: #ce9178;'; // String
+                      cls = 'sh-string'; // String
                   }
               } else if (/true|false/.test(match)) {
-                  cls = 'color: #569cd6;'; // Boolean
+                  cls = 'sh-boolean'; // Boolean
               } else if (/null/.test(match)) {
-                  cls = 'color: #569cd6;'; // Null
+                  cls = 'sh-null'; // Null
               } else {
-                  cls = 'color: #b5cea8;'; // Number
+                  cls = 'sh-number'; // Number
               }
-              return '<span style="' + cls + '">' + match + '</span>';
+              return '<span class="' + cls + '">' + match + '</span>';
           });
       }
       
@@ -986,12 +986,17 @@
           const textarea = document.getElementById('importJsonTextarea');
           try {
               if(!textarea.value.trim()) return;
-              const parsed = JSON.parse(textarea.value);
+              let parsed;
+              try {
+                  parsed = JSON.parse(textarea.value);
+              } catch(e) {
+                  parsed = new Function('return ' + textarea.value)();
+              }
               textarea.value = JSON.stringify(parsed, null, 2);
               window.syncJsonHighlight();
           } catch(e) {
               window.syncJsonHighlight();
-              console.warn("Invalid JSON, cannot format");
+              alert("Lỗi cú pháp JSON. Vui lòng kiểm tra lại dấu ngoặc hoặc dấu phẩy thừa!\n\nChi tiết lỗi: " + e.message);
           }
       };
 

@@ -1810,3 +1810,81 @@ body.dark #chartMessage {
   border-color: #334155 !important;
   color: #94a3b8 !important;
 }
+
+
+/* IMPORT JSON MODAL DARK MODE */
+body.dark-mode .ij-modal-content {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+body.dark-mode .ij-modal-header {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+    border-bottom: 1px solid #3f3f46;
+    color: white;
+}
+body.dark-mode .ij-modal-header h3 {
+    color: white;
+}
+body.dark-mode .ij-modal-header p {
+    color: #a1a1aa !important;
+}
+body.dark-mode .ij-modal-header button {
+    color: white !important;
+    background: rgba(255,255,255,0.1) !important;
+}
+body.dark-mode .ij-modal-header button:hover {
+    background: rgba(255,255,255,0.2) !important;
+}
+body.dark-mode .ij-modal-body {
+    background: #0f172a;
+}
+body.dark-mode .ij-input-name {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+body.dark-mode .ij-input-name:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+body.dark-mode .ij-ide-container {
+    border-color: #334155;
+}
+body.dark-mode .ij-footer {
+    background: #1e293b;
+    border-top-color: #334155;
+}
+body.dark-mode .ij-btn-cancel {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+body.dark-mode .ij-btn-cancel:hover {
+    background: #475569;
+}
+
+
+/* SYNTAX HIGHLIGHT DARK THEME */
+body.dark-mode #jsonHighlightLayer { color: #d4d4d4; }
+body.dark-mode .sh-default { color: #d4d4d4; }
+body.dark-mode .sh-key { color: #9cdcfe; }
+body.dark-mode .sh-string { color: #ce9178; }
+body.dark-mode .sh-boolean, body.dark-mode .sh-null { color: #569cd6; }
+body.dark-mode .sh-number { color: #b5cea8; }
+
+
+/* IDE Caret Color Dark Mode */
+body.dark-mode #importJsonTextarea {
+    caret-color: #ffffff !important; /* White caret for dark background */
+}
+
+
+/* Fix IDE background for Dark Mode */
+body.dark-mode .ij-ide-container {
+    background: #1e1e1e !important;
+}
+body.dark-mode .ij-ide-header {
+    background: #2d2d2d !important;
+    border-bottom: 1px solid #3f3f46 !important;
+}
