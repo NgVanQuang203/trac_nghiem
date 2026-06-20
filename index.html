@@ -506,6 +506,10 @@
               </button>
               <input type="file" id="cloudFileInput" class="cloud-file-input" accept=".json" multiple onmousedown="window.forceFocusBack()" />
             </div>
+            <button id="btnToggleMultiSelect" class="btn-cloud-action btn-multi-select" onclick="window.toggleMultiSelect()" title="Chọn nhiều">
+              <span class="btn-action-icon">☑️</span>
+              <span class="btn-action-label">Chọn nhiều</span>
+            </button>
           </div>
         </div>
 
@@ -528,8 +532,49 @@
           <div id="cloudGridArea" class="cloud-grid"></div>
         </div>
 
+        <!-- Multi-select action bar -->
+        <div id="multiSelectBar" class="multi-select-bar" style="display:none;">
+          <span id="multiSelectCount" class="ms-count">0 đã chọn</span>
+          <div class="ms-actions">
+            <button class="ms-btn ms-btn-move" onclick="window.moveSelectedItems()" title="Di chuyển">
+              🚚 Di chuyển
+            </button>
+            <button class="ms-btn ms-btn-delete" onclick="window.deleteSelectedItems()" title="Xóa tất cả đã chọn">
+              🗑️ Xóa
+            </button>
+            <button class="ms-btn ms-btn-cancel" onclick="window.toggleMultiSelect()" title="Hủy chọn">
+              ✕ Hủy
+            </button>
+          </div>
+        </div>
+
         <!-- Legacy back button (hidden, prevents JS errors) -->
         <button id="btnDriveBack" style="display:none"></button>
+      </div>
+    </div>
+
+    <!-- Modal: Sửa nội dung đề thi -->
+    <div id="editExamModal" class="modal-overlay" style="display:none; z-index:210;">
+      <div class="modal-content edit-exam-modal-box">
+        <div class="drive-header">
+          <div class="drive-brand">
+            <div class="drive-logo-wrap">📝</div>
+            <div class="drive-title">
+              <h3>Sửa nội dung đề thi</h3>
+              <span class="drive-subtitle" id="editExamModalName">Đang tải...</span>
+            </div>
+          </div>
+          <button class="btn-close-drive" onclick="window.closeEditExamModal()">✕</button>
+        </div>
+        <div class="edit-exam-body">
+          <div class="edit-exam-hint">⚠️ Chỉnh sửa trực tiếp JSON bên dưới. Phải là JSON hợp lệ (mảng các câu hỏi).</div>
+          <textarea id="editExamTextarea" class="edit-exam-textarea" spellcheck="false" placeholder="Đang tải nội dung..."></textarea>
+        </div>
+        <div class="edit-exam-footer">
+          <button class="ms-btn ms-btn-cancel" onclick="window.closeEditExamModal()">✕ Hủy</button>
+          <button class="ms-btn ms-btn-move" onclick="window.formatEditExamJson()">🔧 Format JSON</button>
+          <button class="ms-btn ms-btn-save" onclick="window.saveEditExamContent()">💾 Lưu</button>
+        </div>
       </div>
     </div>
     <!-- Modal: Di chuyển đến -->
@@ -542,7 +587,7 @@
               <h3 style="font-size: 15px;">Di chuyển đến...</h3>
             </div>
           </div>
-          <button class="btn-close-drive" onclick="document.getElementById('moveModal').style.display='none'">✕</button>
+          <button class="btn-close-drive" onclick="document.getElementById('moveModal').style.display='none'; window._multiMoveMode=false; window._multiMoveItems=[];">✕</button>
         </div>
         <div class="cloud-toolbar" style="padding: 10px 20px;">
           <div id="moveBreadcrumb" class="cloud-breadcrumb"></div>

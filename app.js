@@ -58,11 +58,9 @@ async function saveKeysToStorage(keysArray, provider = "gemini") {
 
   if (provider === "gemini") {
     API_KEYS = cleanKeys;
-    localStorage.setItem("gemini_api_keys", JSON.stringify(cleanKeys));
     currentKeyIndex = 0;
   } else {
     GROQ_KEYS = cleanKeys;
-    localStorage.setItem("groq_api_keys", JSON.stringify(cleanKeys));
     currentGroqKeyIndex = 0;
   }
 
@@ -98,11 +96,9 @@ async function syncKeysFromCloud(user) {
       const data = doc.data();
       if (data.apiKeys) {
         API_KEYS = data.apiKeys;
-        localStorage.setItem("gemini_api_keys", JSON.stringify(API_KEYS));
       }
       if (data.groqKeys) {
         GROQ_KEYS = data.groqKeys;
-        localStorage.setItem("groq_api_keys", JSON.stringify(GROQ_KEYS));
       }
       if (data.aiProvider) {
         AI_PROVIDER = data.aiProvider;
@@ -117,14 +113,7 @@ async function syncKeysFromCloud(user) {
 
 // 3. Hàm tải Key từ Local (Chạy khi mới mở web)
 function loadKeysFromLocal() {
-  const gStored = localStorage.getItem("gemini_api_keys");
-  if (gStored) {
-    try { API_KEYS = JSON.parse(gStored); } catch (e) { }
-  }
-  const grStored = localStorage.getItem("groq_api_keys");
-  if (grStored) {
-    try { GROQ_KEYS = JSON.parse(grStored); } catch (e) { }
-  }
+  // Đã chuyển hoàn toàn sang lưu Cloud, không dùng LocalStorage nữa
 }
 
 // 4. Cấu hình AI
@@ -237,12 +226,73 @@ const decodeKey = (str) => {
 };
 
 // 2. Cập nhật lỗi lên Cloud (Cộng hoặc Trừ)
+// Hỗ trợ lấy/xác định chuẩn xác Doc ID cho sổ tay lỗi (Tránh hoàn toàn ghi nhầm / lấy nhầm)
+async function resolveMistakeDocId(examName) {
+  const user = auth.currentUser;
+  if (!user) return null;
+  const legacyId = getSafeId(examName);
+  
+  // Nếu là đề thi Local (không có docId) -> Dùng tên
+  if (!pendingData || !pendingData.docId || pendingData.name !== examName) {
+    return legacyId;
+  }
+
+  const docId = pendingData.docId;
+  const collectionRef = db.collection("users").doc(user.uid).collection("mistake_tracking");
+
+  const CUTOFF_TIME = 1781827200000; // 19/06/2026
+  const isOldExam = pendingData.createdAt && pendingData.createdAt <= CUTOFF_TIME;
+
+  const doc = await collectionRef.doc(docId).get();
+  
+  // Nếu là file mới (sau Cutoff) -> Trả về luôn, không bao giờ đụng đến legacy
+  if (!isOldExam) {
+    return docId; 
+  }
+
+  // Nếu là file cũ (trước Cutoff), kiểm tra xem đã từng merge legacy chưa
+  const docData = doc.exists ? doc.data() : null;
+  if (docData && docData._legacyMerged) {
+    return docId;
+  }
+
+  // File cũ CHƯA MERGE legacy -> Tiến hành lấy legacy để merge
+  const legacyDoc = await collectionRef.doc(legacyId).get();
+  if (legacyDoc.exists) {
+    const legacyData = legacyDoc.data();
+    
+    // Gộp dữ liệu: Ưu tiên dữ liệu hiện tại của docId (nếu có), bổ sung từ legacy
+    const mergedData = { ...legacyData, ...(docData || {}) };
+    
+    // Dọn dẹp các cờ rác
+    delete mergedData._claimedBy;
+    delete mergedData._migrated;
+    
+    // Đánh dấu đã merge để lần sau không làm lại
+    mergedData._legacyMerged = true;
+
+    const batch = db.batch();
+    batch.set(collectionRef.doc(docId), mergedData);
+    // Vẫn giữ legacyDoc, đánh dấu _migrated để ẩn khỏi danh sách "Tất cả đề thi"
+    batch.update(collectionRef.doc(legacyId), { _migrated: true });
+    await batch.commit();
+    return docId;
+  } else {
+    // Legacy không tồn tại. Nếu docId đang có data thì đánh dấu luôn để khỏi check lại
+    if (doc.exists) {
+      await collectionRef.doc(docId).update({ _legacyMerged: true });
+    }
+    return docId;
+  }
+}
+
 // 2. Cập nhật lỗi lên Cloud (Cộng hoặc Trừ) - PHIÊN BẢN FIX LỖI TREO
 async function updateMistakeInCloud(examName, questionText, isCorrect) {
   const user = auth.currentUser;
   if (!user) return 0;
 
-  const safeExamId = getSafeId(examName);
+  const safeExamId = await resolveMistakeDocId(examName);
+  if (!safeExamId) return 0;
   const originalKey = encodeKey(questionText);
   const qKey = getSmartKey(questionText);
   let targetKey = originalKey; // Mặc định dùng khóa tạo từ text
@@ -358,17 +408,13 @@ async function fetchMistakesFromCloud(examName) {
   const user = auth.currentUser;
   if (!user) return {};
 
-  const safeExamId = getSafeId(examName);
+  const safeExamId = await resolveMistakeDocId(examName);
+  if (!safeExamId) return {};
+
   try {
-    const doc = await db
-      .collection("users")
-      .doc(user.uid)
-      .collection("mistake_tracking")
-      .doc(safeExamId)
-      .get();
-    if (doc.exists) {
-      return doc.data();
-    }
+    const doc = await db.collection("users").doc(user.uid).collection("mistake_tracking").doc(safeExamId).get();
+    if (doc.exists) return doc.data();
+    return {};
   } catch (e) {
     console.error("Lỗi tải câu sai:", e);
   }
@@ -550,12 +596,12 @@ function normalizeText(str) {
     .replace(/\s+/g, " ");    // Chuẩn hóa khoảng trắng
 }
 
-async function handleDataLoaded(data, fileName) {
+async function handleDataLoaded(data, fileName, cloudDocId = null, cloudCreatedAt = null) {
   if (!Array.isArray(data) || data.length === 0) {
     cloudAlert({ title: "Lỗi File", message: "File không hợp lệ hoặc không có câu hỏi.", icon: "❌" });
     return;
   }
-  pendingData = { data: data, name: fileName };
+  pendingData = { data: data, name: fileName, docId: cloudDocId, createdAt: cloudCreatedAt };
   updateFileStatus(fileName, true);
 
   document.getElementById("quiz").innerHTML = `
@@ -1000,6 +1046,10 @@ let movingItemType = null;
 let movingItemSourceParentId = null; // Thư mục gốc ban đầu
 let moveCurrentFolderId = null;
 let movePath = [{ id: null, name: 'Gốc' }];
+// Multi-move support
+let _multiMoveMode = false;
+let _multiMoveItems = [];
+
 
 window.openMoveModal = function (id, type, name, sourceParentId) {
   movingItemId = id;
@@ -1011,6 +1061,12 @@ window.openMoveModal = function (id, type, name, sourceParentId) {
 
   document.getElementById("moveModal").style.display = "flex";
   window.renderMoveDirectory();
+};
+
+window.closeMoveModal = function () {
+  document.getElementById('moveModal').style.display = 'none';
+  _multiMoveMode = false;
+  _multiMoveItems = [];
 };
 
 window.navigateMoveFolder = function (id, name, pathIndex = -1) {
@@ -1095,13 +1151,33 @@ window.renderMoveDirectory = async function () {
     btnConfirm.onclick = async () => {
       cloudAlert({ type: 'loading', title: 'Đang di chuyển...', message: 'Vui lòng chờ' });
       try {
-        const collection = movingItemType === 'file' ? 'examFiles' : 'folders';
-        const field = movingItemType === 'file' ? 'folderId' : 'parentId';
-
-        await db.collection("users").doc(user.uid).collection(collection).doc(movingItemId).update({
-          [field]: moveCurrentFolderId
-        });
-
+        const user2 = auth.currentUser;
+        if (_multiMoveMode && _multiMoveItems.length > 0) {
+          // Di chuyển nhiều mục
+          for (const item of _multiMoveItems) {
+            const col = item.type === 'file' ? 'examFiles' : 'folders';
+            const field = item.type === 'file' ? 'folderId' : 'parentId';
+            await db.collection('users').doc(user2.uid).collection(col).doc(item.id).update({
+              [field]: moveCurrentFolderId
+            });
+          }
+          // Reset multi-select
+          _selectedItems = [];
+          _isMultiSelect = false;
+          _multiMoveMode = false;
+          _multiMoveItems = [];
+          const btn = document.getElementById('btnToggleMultiSelect');
+          const bar = document.getElementById('multiSelectBar');
+          if (btn) btn.classList.remove('active');
+          if (bar) bar.style.display = 'none';
+        } else {
+          // Di chuyển 1 mục (logic cũ)
+          const collection = movingItemType === 'file' ? 'examFiles' : 'folders';
+          const field = movingItemType === 'file' ? 'folderId' : 'parentId';
+          await db.collection("users").doc(user2.uid).collection(collection).doc(movingItemId).update({
+            [field]: moveCurrentFolderId
+          });
+        }
         document.getElementById("moveModal").style.display = "none";
         window.closeCloudAlert();
         loadCloudDirectory();
@@ -1128,6 +1204,8 @@ window.showGlobalCloudMenu = function (e, id, type, name) {
       <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.enterFolder('${id}', '${name}')">
         <span class="dropdown-icon">📂</span> Mở thư mục
       </div>
+      <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.renameFolder('${id}', '${name.replace(/'/g, "\\'")}')"><span class="dropdown-icon">✏️</span> Đổi tên
+      </div>
       <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.openMoveModal('${id}', 'folder', '${name}', '${currentFolderId}')">
         <span class="dropdown-icon">🚚</span> Di chuyển
       </div>
@@ -1139,6 +1217,10 @@ window.showGlobalCloudMenu = function (e, id, type, name) {
     dropdown.innerHTML = `
       <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.selectDriveFile('${id}', '${name}')">
         <span class="dropdown-icon">📖</span> Mở đề thi
+      </div>
+      <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.renameExamFile('${id}', '${name.replace(/'/g, "\\'")}')"><span class="dropdown-icon">✏️</span> Đổi tên
+      </div>
+      <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.editExamContent('${id}', '${name.replace(/'/g, "\\'")}')"><span class="dropdown-icon">📝</span> Sửa nội dung
       </div>
       <div class="dropdown-item" onclick="window.closeGlobalDropdown(); window.openMoveModal('${id}', 'file', '${name}', '${currentFolderId}')">
         <span class="dropdown-icon">🚚</span> Di chuyển
@@ -1157,8 +1239,8 @@ window.showGlobalCloudMenu = function (e, id, type, name) {
   // Position the dropdown exactly where the mouse clicked
   const clickX = e.clientX;
   const clickY = e.clientY;
-  const dropdownWidth = 160;
-  const dropdownHeight = 130; // Approx height for 3 items
+  const dropdownWidth = 175;
+  const dropdownHeight = type === 'file' ? 185 : 150; // Approx height for items
 
   // By default, open below and slightly left of the cursor
   let leftPos = clickX - dropdownWidth + 20;
@@ -1193,6 +1275,283 @@ document.addEventListener('click', () => {
 });
 
 // ==========================================
+// ĐỔI TÊN ĐỀ THI / THƯ MỤC
+// ==========================================
+
+// Đổi tên file đề thi
+window.renameExamFile = async function (fileId, oldName) {
+  const newName = await cloudAlert({
+    type: 'prompt',
+    title: 'Đổi tên đề thi',
+    message: 'Nhập tên mới:',
+    icon: '✏️',
+    defaultValue: oldName,
+    confirmText: 'Lưu'
+  });
+  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+
+  const user = auth.currentUser;
+  if (!user) return;
+
+  window.setCloudLoading(true, 'Đang đổi tên...');
+  try {
+    // Lấy tên duy nhất (bỏ qua tên cũ của chính file này)
+    const snap = await db.collection('users').doc(user.uid).collection('examFiles')
+      .where('folderId', '==', currentFolderId).get();
+    const existingNames = new Set();
+    snap.forEach(doc => {
+      if (doc.id !== fileId) existingNames.add(doc.data().displayName || '');
+    });
+    let finalName = newName.trim();
+    if (existingNames.has(finalName)) {
+      let counter = 2;
+      while (existingNames.has(`${finalName} (${counter})`)) counter++;
+      finalName = `${finalName} (${counter})`;
+    }
+
+    await db.collection('users').doc(user.uid).collection('examFiles').doc(fileId).update({
+      displayName: finalName
+    });
+    window.setCloudLoading(false);
+    loadCloudDirectory();
+  } catch (e) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Lỗi đổi tên', message: e.message, icon: '❌' });
+  }
+};
+
+// Đổi tên thư mục
+window.renameFolder = async function (folderId, oldName) {
+  const newName = await cloudAlert({
+    type: 'prompt',
+    title: 'Đổi tên thư mục',
+    message: 'Nhập tên mới:',
+    icon: '✏️',
+    defaultValue: oldName,
+    confirmText: 'Lưu'
+  });
+  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+
+  const user = auth.currentUser;
+  if (!user) return;
+
+  window.setCloudLoading(true, 'Đang đổi tên...');
+  try {
+    const parentSnap = await db.collection('users').doc(user.uid).collection('folders').doc(folderId).get();
+    const parentId = parentSnap.exists ? parentSnap.data().parentId : null;
+
+    const snap = await db.collection('users').doc(user.uid).collection('folders')
+      .where('parentId', '==', parentId).get();
+    const existingNames = new Set();
+    snap.forEach(doc => {
+      if (doc.id !== folderId) existingNames.add(doc.data().name || '');
+    });
+    let finalName = newName.trim();
+    if (existingNames.has(finalName)) {
+      let counter = 2;
+      while (existingNames.has(`${finalName} (${counter})`)) counter++;
+      finalName = `${finalName} (${counter})`;
+    }
+
+    await db.collection('users').doc(user.uid).collection('folders').doc(folderId).update({
+      name: finalName
+    });
+    window.setCloudLoading(false);
+    loadCloudDirectory();
+  } catch (e) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Lỗi đổi tên', message: e.message, icon: '❌' });
+  }
+};
+
+// ==========================================
+// SỬ A NỘI DUNG ĐỀ THI
+// ==========================================
+
+let _editingFileId = null;
+
+window.editExamContent = async function (fileId, displayName) {
+  _editingFileId = fileId;
+  const modal = document.getElementById('editExamModal');
+  const textarea = document.getElementById('editExamTextarea');
+  const nameEl = document.getElementById('editExamModalName');
+
+  modal.style.display = 'flex';
+  nameEl.textContent = displayName;
+  textarea.value = 'Đang tải nội dung...';
+  textarea.disabled = true;
+
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Chưa đăng nhập');
+    const docSnap = await db.collection('users').doc(user.uid).collection('examFiles').doc(fileId).get();
+    if (!docSnap.exists) throw new Error('Không tìm thấy đề thi!');
+    const content = docSnap.data().content || '[]';
+    // Format JSON đẹp
+    try {
+      textarea.value = JSON.stringify(JSON.parse(content), null, 2);
+    } catch {
+      textarea.value = content;
+    }
+    textarea.disabled = false;
+    textarea.focus();
+  } catch (e) {
+    textarea.value = 'Lỗi: ' + e.message;
+  }
+};
+
+window.closeEditExamModal = function () {
+  document.getElementById('editExamModal').style.display = 'none';
+  _editingFileId = null;
+};
+
+window.formatEditExamJson = function () {
+  const textarea = document.getElementById('editExamTextarea');
+  try {
+    const parsed = JSON.parse(textarea.value);
+    textarea.value = JSON.stringify(parsed, null, 2);
+  } catch (e) {
+    cloudAlert({ title: 'JSON không hợp lệ', message: 'Lỗi: ' + e.message, icon: '❌' });
+  }
+};
+
+window.saveEditExamContent = async function () {
+  if (!_editingFileId) return;
+  const textarea = document.getElementById('editExamTextarea');
+  const raw = textarea.value;
+
+  // Validate JSON
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    cloudAlert({ title: 'JSON không hợp lệ', message: 'Vui lòng kiểm tra lại. Lỗi: ' + e.message, icon: '❌' });
+    return;
+  }
+  if (!Array.isArray(parsed)) {
+    cloudAlert({ title: 'Cấu trúc sai', message: 'Nội dung phải là mảng (array) các câu hỏi.', icon: '⚠️' });
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) return;
+
+  window.setCloudLoading(true, 'Đang lưu...');
+  try {
+    await db.collection('users').doc(user.uid).collection('examFiles').doc(_editingFileId).update({
+      content: JSON.stringify(parsed, null, 2)
+    });
+    window.setCloudLoading(false);
+    window.closeEditExamModal();
+    cloudAlert({ title: 'Thành công', message: 'Nội dung đề thi đã được cập nhật!', icon: '✅' });
+    setTimeout(() => window.closeCloudAlert(), 1800);
+  } catch (e) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Lỗi lưu', message: e.message, icon: '❌' });
+  }
+};
+
+// ==========================================
+// CHỌN NHIỀU (MULTI-SELECT)
+// ==========================================
+
+let _isMultiSelect = false;
+let _selectedItems = []; // [{ id, type }]
+
+window.toggleMultiSelect = function () {
+  _isMultiSelect = !_isMultiSelect;
+  _selectedItems = [];
+
+  const btn = document.getElementById('btnToggleMultiSelect');
+  const bar = document.getElementById('multiSelectBar');
+
+  if (_isMultiSelect) {
+    btn.classList.add('active');
+    bar.style.display = 'flex';
+  } else {
+    btn.classList.remove('active');
+    bar.style.display = 'none';
+  }
+  _updateMultiSelectCount();
+  loadCloudDirectory();
+};
+
+window.toggleSelectItem = function (id, type, el) {
+  const idx = _selectedItems.findIndex(i => i.id === id);
+  if (idx >= 0) {
+    _selectedItems.splice(idx, 1);
+    el.classList.remove('selected');
+    el.querySelector('.item-checkbox').checked = false;
+  } else {
+    _selectedItems.push({ id, type });
+    el.classList.add('selected');
+    el.querySelector('.item-checkbox').checked = true;
+  }
+  _updateMultiSelectCount();
+};
+
+function _updateMultiSelectCount() {
+  const el = document.getElementById('multiSelectCount');
+  if (!el) return;
+  const n = _selectedItems.length;
+  el.innerHTML = `Đã chọn: <b>${n}</b> mục`;
+}
+
+window.deleteSelectedItems = async function () {
+  if (!_selectedItems.length) {
+    cloudAlert({ title: 'Thông báo', message: 'Chưa chọn mục nào!', icon: 'ℹ️' });
+    return;
+  }
+  const confirm = await cloudAlert({
+    type: 'confirm',
+    title: 'Xóa nhiều mục',
+    message: `Bạn có chắc muốn xóa ${_selectedItems.length} mục đã chọn?`,
+    icon: '🗑️'
+  });
+  if (!confirm) return;
+
+  const user = auth.currentUser;
+  window.setCloudLoading(true, 'Đang xóa...');
+  try {
+    for (const item of _selectedItems) {
+      if (item.type === 'folder') {
+        await recursiveDeleteFolder(user.uid, item.id);
+      } else {
+        await db.collection('users').doc(user.uid).collection('examFiles').doc(item.id).delete();
+      }
+    }
+    _selectedItems = [];
+    window.setCloudLoading(false);
+    // Tắt chế độ chọn nhiều sau khi xóa xong
+    _isMultiSelect = false;
+    document.getElementById('btnToggleMultiSelect').classList.remove('active');
+    document.getElementById('multiSelectBar').style.display = 'none';
+    loadCloudDirectory();
+  } catch (e) {
+    window.setCloudLoading(false);
+    cloudAlert({ title: 'Lỗi', message: e.message, icon: '❌' });
+  }
+};
+
+window.moveSelectedItems = async function () {
+  if (!_selectedItems.length) {
+    cloudAlert({ title: 'Thông báo', message: 'Chưa chọn mục nào!', icon: 'ℹ️' });
+    return;
+  }
+  // Đặt flag multi-move TRƯỚC khi mở modal
+  // renderMoveDirectory sẽ đọc flag này khi set btnConfirm.onclick
+  _multiMoveMode = true;
+  _multiMoveItems = [..._selectedItems];
+
+  // Mở modal (dùng item đầu tiên để init sourceParentId)
+  const first = _selectedItems[0];
+  window.openMoveModal(first.id, first.type, `${_selectedItems.length} mục đã chọn`, currentFolderId);
+};
+
+
+
+
+// ==========================================
 // FOLDER & FILE LOGIC — HELPERS
 // ==========================================
 window.setCloudLoading = function (show, message = "Đang xử lý...") {
@@ -1209,6 +1568,29 @@ window.setCloudLoading = function (show, message = "Đang xử lý...") {
 // ==========================================
 // FOLDER & FILE LOGIC — DRAG & DROP
 // ==========================================
+
+// Tạo tên duy nhất theo kiểu Windows: "Tên", "Tên (2)", "Tên (3)", ...
+async function getUniqueFolderName(userId, parentId, baseName) {
+  const snap = await db.collection("users").doc(userId).collection("folders")
+    .where("parentId", "==", parentId).get();
+  const existingNames = new Set();
+  snap.forEach(doc => existingNames.add(doc.data().name || ""));
+  if (!existingNames.has(baseName)) return baseName;
+  let counter = 2;
+  while (existingNames.has(`${baseName} (${counter})`)) counter++;
+  return `${baseName} (${counter})`;
+}
+
+async function getUniqueFileName(userId, folderId, baseName) {
+  const snap = await db.collection("users").doc(userId).collection("examFiles")
+    .where("folderId", "==", folderId).get();
+  const existingNames = new Set();
+  snap.forEach(doc => existingNames.add(doc.data().displayName || ""));
+  if (!existingNames.has(baseName)) return baseName;
+  let counter = 2;
+  while (existingNames.has(`${baseName} (${counter})`)) counter++;
+  return `${baseName} (${counter})`;
+}
 
 // Tạo thư mục mới
 window.promptCreateFolder = async function () {
@@ -1227,8 +1609,9 @@ window.promptCreateFolder = async function () {
 
   window.setCloudLoading(true, "Đang tạo thư mục...");
   try {
+    const uniqueName = await getUniqueFolderName(user.uid, currentFolderId, name.trim());
     await db.collection("users").doc(user.uid).collection("folders").add({
-      name: name.trim(),
+      name: uniqueName,
       parentId: currentFolderId,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -1264,12 +1647,14 @@ async function uploadJsonToCloud(file, displayName) {
     }
 
     // Lưu thẳng vào Firestore
+    const baseDisplayName = displayName || file.name.replace(/\.json$/i, "");
+    const uniqueDisplayName = await getUniqueFileName(user.uid, currentFolderId, baseDisplayName);
     await db
       .collection("users")
       .doc(user.uid)
       .collection("examFiles")
       .add({
-        displayName: displayName || file.name.replace(/\.json$/i, ""),
+        displayName: uniqueDisplayName,
         fileName: file.name,
         content: text, // Lưu nội dung JSON dưới dạng chuỗi
         folderId: currentFolderId,
@@ -1277,7 +1662,7 @@ async function uploadJsonToCloud(file, displayName) {
       });
 
     window.setCloudLoading(false);
-    cloudAlert({ title: 'Thành công', message: `Tải lên thành công: ${displayName}`, icon: '✅' });
+    cloudAlert({ title: 'Thành công', message: `Tải lên thành công: ${uniqueDisplayName}`, icon: '✅' });
 
     // Tự ẩn thông báo sau 2s
     setTimeout(() => {
@@ -1313,7 +1698,8 @@ async function loadCloudFile(docId, displayName) {
     const json = JSON.parse(data.content);
 
     document.getElementById("driveModal").style.display = "none";
-    handleDataLoaded(json, displayName);
+    const createdAtMs = data.createdAt ? data.createdAt.toMillis() : null;
+    handleDataLoaded(json, displayName, docId, createdAtMs); // truyền docId và createdAt để lọc lịch sử
   } catch (e) {
     cloudAlert({ title: "Lỗi", message: "Không mở được file: " + e.message, icon: "❌" });
   } finally {
@@ -1403,41 +1789,67 @@ async function loadCloudDirectory() {
 
     // Render Folders
     foldersArray.forEach((d) => {
-      const dateStr = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString("vi-VN") : "";
-      html += `
-        <div class="cloud-item type-folder" 
-             onclick="window.enterFolder('${d.id}', '${d.name.replace(/'/g, "\\'")}')"
-             draggable="true"
-             ondragstart="window.handleItemDragStart(event, '${d.id}', 'folder')"
-             ondragend="window.handleItemDragEnd(event)"
-             ondragover="window.handleItemDragOver(event, this)"
-             ondragleave="window.handleItemDragLeave(event, this)"
-             ondrop="window.handleItemDrop(event, '${d.id}')">
-          <div class="icon-box">📁</div>
-          <div class="cloud-name">${d.name}</div>
-          
-          <div class="cloud-item-menu" onclick="event.stopPropagation()">
-            <button class="btn-menu-dots" onclick="window.showGlobalCloudMenu(event, '${d.id}', 'folder', '${d.name.replace(/'/g, "\\'")}')">⋮</button>
-          </div>
-        </div>`;
+      const safeId = d.id;
+      const safeName = d.name.replace(/'/g, "\\'");
+      const isSelected = _selectedItems.some(i => i.id === safeId);
+      if (_isMultiSelect) {
+        html += `
+          <div class="cloud-item type-folder select-mode${isSelected ? ' selected' : ''}" id="msitem-${safeId}"
+               onclick="window.toggleSelectItem('${safeId}', 'folder', this)">
+            <div class="item-checkbox-wrap" onclick="event.stopPropagation()">
+              <input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleSelectItem('${safeId}', 'folder', document.getElementById('msitem-${safeId}'))">
+            </div>
+            <div class="icon-box">📁</div>
+            <div class="cloud-name">${d.name}</div>
+          </div>`;
+      } else {
+        html += `
+          <div class="cloud-item type-folder" 
+               onclick="window.enterFolder('${safeId}', '${safeName}')"
+               draggable="true"
+               ondragstart="window.handleItemDragStart(event, '${safeId}', 'folder')"
+               ondragend="window.handleItemDragEnd(event)"
+               ondragover="window.handleItemDragOver(event, this)"
+               ondragleave="window.handleItemDragLeave(event, this)"
+               ondrop="window.handleItemDrop(event, '${safeId}')">
+            <div class="icon-box">📁</div>
+            <div class="cloud-name">${d.name}</div>
+            <div class="cloud-item-menu" onclick="event.stopPropagation()">
+              <button class="btn-menu-dots" onclick="window.showGlobalCloudMenu(event, '${safeId}', 'folder', '${safeName}')">⋮</button>
+            </div>
+          </div>`;
+      }
     });
 
     // Render Files
     filesArray.forEach((d) => {
-      const dateStr = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString("vi-VN") : "";
-      html += `
-        <div class="cloud-item" 
-             onclick="window.selectDriveFile('${d.id}', '${d.displayName.replace(/'/g, "\\'")}')"
-             draggable="true" 
-             ondragstart="window.handleItemDragStart(event, '${d.id}', 'file')"
-             ondragend="window.handleItemDragEnd(event)">
-          <div class="icon-box">📋</div>
-          <div class="cloud-name" title="${d.displayName}">${d.displayName}</div>
-          
-          <div class="cloud-item-menu" onclick="event.stopPropagation()">
-            <button class="btn-menu-dots" onclick="window.showGlobalCloudMenu(event, '${d.id}', 'file', '${d.displayName.replace(/'/g, "\\'")}')">⋮</button>
-          </div>
-        </div>`;
+      const safeId = d.id;
+      const safeName = d.displayName.replace(/'/g, "\\'");
+      const isSelected = _selectedItems.some(i => i.id === safeId);
+      if (_isMultiSelect) {
+        html += `
+          <div class="cloud-item select-mode${isSelected ? ' selected' : ''}" id="msitem-${safeId}"
+               onclick="window.toggleSelectItem('${safeId}', 'file', this)">
+            <div class="item-checkbox-wrap" onclick="event.stopPropagation()">
+              <input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleSelectItem('${safeId}', 'file', document.getElementById('msitem-${safeId}'))">
+            </div>
+            <div class="icon-box">📋</div>
+            <div class="cloud-name" title="${d.displayName}">${d.displayName}</div>
+          </div>`;
+      } else {
+        html += `
+          <div class="cloud-item" 
+               onclick="window.selectDriveFile('${safeId}', '${safeName}')"
+               draggable="true" 
+               ondragstart="window.handleItemDragStart(event, '${safeId}', 'file')"
+               ondragend="window.handleItemDragEnd(event)">
+            <div class="icon-box">📋</div>
+            <div class="cloud-name" title="${d.displayName}">${d.displayName}</div>
+            <div class="cloud-item-menu" onclick="event.stopPropagation()">
+              <button class="btn-menu-dots" onclick="window.showGlobalCloudMenu(event, '${safeId}', 'file', '${safeName}')">⋮</button>
+            </div>
+          </div>`;
+      }
     });
 
     gridEl.innerHTML = html;
@@ -1756,7 +2168,7 @@ function updateProgressBar() {
   if (activeBar) activeBar.style.width = `${percent}%`;
 }
 
-function grade(autoSubmit) {
+async function grade(autoSubmit) {
   if (!questionsData.length) return;
   if (examFinished) return;
 
@@ -1781,12 +2193,10 @@ function grade(autoSubmit) {
   let mistakeDocRef = null;
 
   if (user && currentExamName) {
-    const safeId = getSafeId(currentExamName);
-    mistakeDocRef = db
-      .collection("users")
-      .doc(user.uid)
-      .collection("mistake_tracking")
-      .doc(safeId);
+    const safeId = await resolveMistakeDocId(currentExamName);
+    if (safeId) {
+      mistakeDocRef = db.collection("users").doc(user.uid).collection("mistake_tracking").doc(safeId);
+    }
   }
   // -------------------------------
 
@@ -1887,7 +2297,7 @@ function grade(autoSubmit) {
   topRes.textContent = `${percent}%`;
   window.scrollTo({ top: 0, behavior: "smooth" });
 
-  saveExamResult(score, total, percent, currentExamName);
+  saveExamResult(score, total, percent, currentExamName, pendingData?.docId || null);
 }
 
 window.resetExam = async function () {
@@ -1964,7 +2374,7 @@ document.getElementById("btnLogin").onclick = () =>
   });
 document.getElementById("btnLogout").onclick = () => auth.signOut();
 
-async function saveExamResult(score, total, percent, examName) {
+async function saveExamResult(score, total, percent, examName, examId = null) {
   const user = auth.currentUser;
   if (!user) return;
   const details = questionsData.map((q, i) => {
@@ -1985,6 +2395,7 @@ async function saveExamResult(score, total, percent, examName) {
       .collection("history")
       .add({
         examName: examName,
+        examId: examId,   // Lưu Firestore docId để phân biệt chính xác
         score,
         total,
         percent,
@@ -2361,6 +2772,50 @@ function showAIResult(index, questionText, htmlContent) {
 // CHART & THỐNG KÊ
 // ========================
 
+/**
+ * So sánh 1 bản ghi lịch sử với đề hiện tại.
+ * Ưu tiên examId (Firestore docId) — chính xác tuyệt đối.
+ * Fallback sang examName, NHƯNG lọc bỏ nếu lịch sử cũ hơn thời điểm file được tạo ra.
+ */
+function matchesExam(record, examName, examId) {
+  if (examId && record.examId) {
+    return record.examId === examId;
+  }
+  if (record.examName === examName) {
+    // Nếu là file Cloud
+    if (examId && pendingData && pendingData.docId === examId) {
+      const CUTOFF_TIME = 1781827200000; // 19/06/2026
+      const isOldExam = pendingData.createdAt && pendingData.createdAt <= CUTOFF_TIME;
+      
+      // Đề cũ thì thừa hưởng tất cả lịch sử legacy mang tên nó
+      if (isOldExam) return true;
+
+      // Đề mới thì chặn chặt chẽ
+      // 1. Không có createdAt -> file mới upload -> Chặn
+      if (!pendingData.createdAt) return false;
+
+      // 2. Lấy recordTime
+      let recordTime = 0;
+      if (record.timestamp) {
+        if (typeof record.timestamp.toMillis === 'function') recordTime = record.timestamp.toMillis();
+        else if (record.timestamp instanceof Date) recordTime = record.timestamp.getTime();
+        else if (typeof record.timestamp === 'number') recordTime = record.timestamp;
+        else if (record.timestamp.seconds) recordTime = record.timestamp.seconds * 1000;
+      }
+
+      // 3. Không tính được time -> legacy record -> Chặn
+      if (recordTime === 0) return false;
+
+      // 4. Lịch sử có trước khi file này ra đời -> Chặn
+      if (recordTime > 0 && recordTime < (pendingData.createdAt - 5000)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 function renderChart(examName, data) {
   const chartBox = document.getElementById("chartContainer");
   const statsBox = document.getElementById("chartStats");
@@ -2369,7 +2824,7 @@ function renderChart(examName, data) {
   const ctx = canvas ? canvas.getContext("2d") : null;
 
   let myHist = data.filter(
-    (h) => h.examName === examName || h.examName.includes(examName)
+    (h) => matchesExam(h, examName, pendingData?.docId || null)
   );
 
   const getTime = (item) => {
@@ -2519,7 +2974,7 @@ function renderChart(examName, data) {
 function renderOverview(examName, data) {
   const container = document.getElementById("historyOverview");
   const myHist = data.filter(
-    (h) => h.examName === examName || h.examName.includes(examName)
+    (h) => matchesExam(h, examName, pendingData?.docId || null)
   );
   if (myHist.length === 0) {
     container.style.display = "none";
@@ -2645,7 +3100,10 @@ async function renderStats(filterName) {
       .collection("mistake_tracking");
 
     if (filterName !== "all") {
-      const safeId = getSafeId(filterName);
+      let safeId = getSafeId(filterName);
+      if (pendingData && pendingData.name === filterName) {
+        safeId = await resolveMistakeDocId(filterName);
+      }
       const doc = await collectionRef.doc(safeId).get();
       snapshot = doc.exists ? { docs: [doc] } : { docs: [] };
     } else {
@@ -2662,10 +3120,12 @@ async function renderStats(filterName) {
 
     snapshot.docs.forEach((doc) => {
       const data = doc.data();
+      // Bỏ qua file legacy đã migrate (hoặc đã claim trước đó) để tránh hiển thị duplicate trong Tất cả đề thi
+      if (data._migrated || data._claimedBy) return; 
       const examId = doc.id;
 
       Object.keys(data).forEach((key) => {
-        if (key === "last_updated") return;
+        if (key === "last_updated" || key === "_claimedBy" || key === "_migrated" || key === "_legacyMerged") return;
 
         let count = 0;
         let questionText = "";
@@ -2755,7 +3215,7 @@ function renderTimeline(filterName) {
   let data = globalHistoryData;
   if (filterName !== "all") {
     data = data.filter(
-      (i) => i.examName === filterName || i.examName.includes(filterName)
+      (i) => matchesExam(i, filterName, null)
     );
   }
   if (!data.length) {
@@ -2823,7 +3283,7 @@ async function checkCurrentExamHistorySummary(examName) {
   summaryEl.style.display = "none";
   await fetchHistoryData(user.uid);
   const myHist = globalHistoryData.filter(
-    (h) => h.examName === examName || h.examName.includes(examName)
+    (h) => matchesExam(h, examName, pendingData?.docId || null)
   );
   if (myHist.length > 0) {
     const maxScore = Math.max(...myHist.map((h) => h.percent));
@@ -2880,12 +3340,32 @@ document.addEventListener("DOMContentLoaded", () => {
   if (closeDriveBtn) {
     closeDriveBtn.onclick = () => {
       document.getElementById("driveModal").style.display = "none";
+      // Reset multi-select khi đóng modal
+      if (_isMultiSelect) {
+        _isMultiSelect = false;
+        _selectedItems = [];
+        const btn = document.getElementById('btnToggleMultiSelect');
+        const bar = document.getElementById('multiSelectBar');
+        if (btn) btn.classList.remove('active');
+        if (bar) bar.style.display = 'none';
+      }
     };
   }
   const driveModal = document.getElementById("driveModal");
   if (driveModal) {
     driveModal.onclick = (e) => {
-      if (e.target === driveModal) driveModal.style.display = "none";
+      if (e.target === driveModal) {
+        driveModal.style.display = "none";
+        // Reset multi-select khi đóng modal
+        if (_isMultiSelect) {
+          _isMultiSelect = false;
+          _selectedItems = [];
+          const btn = document.getElementById('btnToggleMultiSelect');
+          const bar = document.getElementById('multiSelectBar');
+          if (btn) btn.classList.remove('active');
+          if (bar) bar.style.display = 'none';
+        }
+      }
     };
   }
 
@@ -3494,7 +3974,7 @@ window.startReviewMistakes = async function () {
   // 2. Tải danh sách lỗi từ Firebase
   const mistakeData = await fetchMistakesFromCloud(examName);
   const mistakeKeys = Object.keys(mistakeData).filter(
-    (k) => k !== "last_updated"
+    (k) => k !== "last_updated" && k !== "_claimedBy" && k !== "_migrated" && k !== "_legacyMerged"
   );
 
   // Reset UI
@@ -4064,7 +4544,9 @@ window.renderTimeline = function(filterName) {
   if (!list) return;
   let data = globalHistoryData || [];
   if (filterName && filterName !== 'all') {
-    data = data.filter(i => i.examName === filterName || i.examName.includes(filterName));
+    // targetExamName view: dùng pendingData.docId nếu có
+    const currentDocId = (pendingData && pendingData.docId) ? pendingData.docId : null;
+    data = data.filter(i => matchesExam(i, filterName, currentDocId));
   }
   if (!data.length) {
     list.innerHTML = `<p style="text-align:center;padding:24px;color:var(--text-muted,#64748b);">Chưa có lịch sử làm bài nào.</p>`;
