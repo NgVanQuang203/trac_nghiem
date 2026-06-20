@@ -122,6 +122,7 @@ window.promptForKeys = async function () {
   // Quản lý Gemini Keys
   const gInput = await cloudAlert({
     type: 'prompt',
+    inputType: 'textarea',
     title: 'Cấu hình Gemini (Google)',
     message: 'Nhập danh sách API Key Gemini (Mỗi key một dòng):',
     defaultValue: API_KEYS.join("\n"),
@@ -135,6 +136,7 @@ window.promptForKeys = async function () {
   // Quản lý Groq Keys
   const grInput = await cloudAlert({
     type: 'prompt',
+    inputType: 'textarea',
     title: 'Cấu hình Groq',
     message: 'Nhập danh sách API Key Groq (Mỗi key một dòng):',
     defaultValue: GROQ_KEYS.join("\n"),
@@ -847,7 +849,7 @@ window.navigateToFolder = function (folderId, pathIndex = -1) {
 // ==========================================
 // CUSTOM UI UTILS (CLOUD ALERT)
 // ==========================================
-window.cloudAlert = function ({ type = 'alert', title = 'Thông báo', message = '', icon = 'ℹ️', defaultValue = '', confirmText = 'Đồng ý', cancelText = 'Hủy' }) {
+window.cloudAlert = function ({ type = 'alert', inputType = 'text', title = 'Thông báo', message = '', icon = 'ℹ️', defaultValue = '', confirmText = 'Đồng ý', cancelText = 'Hủy' }) {
   return new Promise((resolve) => {
     const overlay = document.getElementById("cloudAlertOverlay");
     document.getElementById("cloudAlertTitle").textContent = title;
@@ -860,6 +862,7 @@ window.cloudAlert = function ({ type = 'alert', title = 'Thông báo', message =
 
     const inputWrapper = document.getElementById("cloudAlertInputWrapper");
     const inputEl = document.getElementById("cloudAlertInput");
+    const textareaEl = document.getElementById("cloudAlertTextarea");
     const btnCancel = document.getElementById("btnCloudAlertCancel");
     const btnConfirm = document.getElementById("btnCloudAlertConfirm");
     const btnCloseTop = document.getElementById("btnCloseCloudAlert");
@@ -867,10 +870,20 @@ window.cloudAlert = function ({ type = 'alert', title = 'Thông báo', message =
     btnConfirm.textContent = confirmText;
     btnCancel.textContent = cancelText;
 
+    let activeInput = inputEl;
     if (type === 'prompt') {
       inputWrapper.style.display = "block";
-      inputEl.value = defaultValue;
-      setTimeout(() => inputEl.focus(), 300);
+      if (inputType === 'textarea') {
+        inputEl.style.display = "none";
+        textareaEl.style.display = "block";
+        activeInput = textareaEl;
+      } else {
+        inputEl.style.display = "block";
+        if (textareaEl) textareaEl.style.display = "none";
+        activeInput = inputEl;
+      }
+      activeInput.value = defaultValue;
+      setTimeout(() => activeInput.focus(), 300);
     } else {
       inputWrapper.style.display = "none";
     }
@@ -902,13 +915,14 @@ window.cloudAlert = function ({ type = 'alert', title = 'Thông báo', message =
     };
     btnCloseTop.onclick = () => close(null);
     btnConfirm.onclick = () => {
-      if (type === 'prompt') close(inputEl.value);
+      if (type === 'prompt') close(activeInput.value);
       else close(true);
     };
 
     if (type === 'prompt') {
-      inputEl.onkeyup = (e) => {
-        if (e.key === 'Enter') close(inputEl.value);
+      activeInput.onkeyup = (e) => {
+        // Nếu là textarea thì ko tự đóng khi enter (phải xuống dòng)
+        if (inputType === 'text' && e.key === 'Enter') close(activeInput.value);
       }
     }
   });
@@ -1369,6 +1383,8 @@ window.renameFolder = async function (folderId, oldName) {
 // ==========================================
 
 let _editingFileId = null;
+let _activeEditExamTab = 'json';
+let _veData = []; // Array to store visual editor data
 
 window.editExamContent = async function (fileId, displayName) {
   _editingFileId = fileId;
@@ -1389,11 +1405,17 @@ window.editExamContent = async function (fileId, displayName) {
     const content = docSnap.data().content || '[]';
     // Format JSON đẹp
     try {
-      textarea.value = JSON.stringify(JSON.parse(content), null, 2);
+      const parsed = JSON.parse(content);
+      textarea.value = JSON.stringify(parsed, null, 2);
+      _veData = parsed;
     } catch {
       textarea.value = content;
+      _veData = [];
     }
     textarea.disabled = false;
+    
+    // Mặc định mở tab JSON
+    window.switchEditExamTab('json');
     textarea.focus();
   } catch (e) {
     textarea.value = 'Lỗi: ' + e.message;
@@ -1403,6 +1425,181 @@ window.editExamContent = async function (fileId, displayName) {
 window.closeEditExamModal = function () {
   document.getElementById('editExamModal').style.display = 'none';
   _editingFileId = null;
+  _veData = [];
+};
+
+window.switchEditExamTab = function(tab) {
+  const textarea = document.getElementById('editExamTextarea');
+  if (tab === 'visual') {
+    // Thử parse JSON
+    try {
+      _veData = JSON.parse(textarea.value);
+      if (!Array.isArray(_veData)) throw new Error("JSON phải là một mảng");
+    } catch(e) {
+      cloudAlert({ title: 'JSON không hợp lệ', message: 'Không thể chuyển sang Trực quan. ' + e.message, icon: '❌' });
+      return;
+    }
+    window.renderVisualEditor();
+    document.getElementById('tabJsonEditor').classList.remove('active');
+    document.getElementById('tabVisualEditor').classList.add('active');
+    document.getElementById('editExamJsonBody').style.display = 'none';
+    document.getElementById('editExamVisualBody').style.display = 'flex';
+    document.getElementById('btnFormatJson').style.display = 'none';
+    _activeEditExamTab = 'visual';
+  } else {
+    // Chuyển sang JSON
+    if (_activeEditExamTab === 'visual') {
+      try {
+        window.extractVisualEditorData();
+        textarea.value = JSON.stringify(_veData, null, 2);
+      } catch(e) {
+        console.error(e);
+      }
+    }
+    document.getElementById('tabVisualEditor').classList.remove('active');
+    document.getElementById('tabJsonEditor').classList.add('active');
+    document.getElementById('editExamVisualBody').style.display = 'none';
+    document.getElementById('editExamJsonBody').style.display = 'flex';
+    document.getElementById('btnFormatJson').style.display = 'inline-block';
+    _activeEditExamTab = 'json';
+  }
+};
+
+window.renderVisualEditor = function() {
+  const container = document.getElementById('veContainer');
+  container.innerHTML = '';
+  
+  if (!_veData || _veData.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Chưa có câu hỏi nào. Nhấn Thêm Câu Hỏi Mới để bắt đầu.</div>';
+    return;
+  }
+  
+  _veData.forEach((q, qIdx) => {
+    const card = document.createElement('div');
+    card.className = 've-qcard';
+    card.dataset.idx = qIdx;
+    
+    // Câu hỏi
+    let html = `
+      <div class="ve-qcard-header">
+        <h4>Câu ${qIdx + 1}</h4>
+        <button class="ve-btn-danger" onclick="window.veRemoveQuestion(${qIdx})">🗑 Xóa</button>
+      </div>
+      <div class="ve-input-group">
+        <label>Nội dung câu hỏi</label>
+        <textarea class="ve-textarea ve-q-content" placeholder="Nhập câu hỏi...">${q.question || ''}</textarea>
+      </div>
+      <div class="ve-input-group">
+        <label>Các đáp án</label>
+        <div class="ve-options" id="veOptions_${qIdx}">
+    `;
+    
+    const options = q.options || [];
+    let correctIdx = -1;
+    if (typeof q.answer === 'number') {
+      correctIdx = q.answer;
+    } else if (typeof q.answer === 'string') {
+      correctIdx = options.findIndex(opt => opt.trim() === q.answer.trim());
+      if (correctIdx === -1 && q.answer.length === 1) {
+        const charCode = q.answer.toUpperCase().charCodeAt(0);
+        if (charCode >= 65 && charCode <= 68) correctIdx = charCode - 65;
+      }
+      if (correctIdx === -1 && !isNaN(q.answer)) {
+        correctIdx = parseInt(q.answer, 10);
+      }
+    }
+    
+    options.forEach((opt, oIdx) => {
+      html += `
+        <div class="ve-option-row">
+          <input type="radio" name="ve_correct_${qIdx}" value="${oIdx}" ${correctIdx === oIdx ? 'checked' : ''} title="Đánh dấu đây là đáp án đúng" />
+          <input type="text" class="ve-input ve-o-content" placeholder="Nhập đáp án..." value="${opt.replace(/"/g, '&quot;')}" />
+          <button class="ve-btn-danger" style="padding: 6px 10px;" onclick="window.veRemoveOption(${qIdx}, ${oIdx})">✕</button>
+        </div>
+      `;
+    });
+    
+    html += `
+        </div>
+        <button class="ve-btn-add" onclick="window.veAddOption(${qIdx})">+ Thêm Đáp Án</button>
+      </div>
+      <div class="ve-input-group">
+        <label>Giải thích (Không bắt buộc)</label>
+        <textarea class="ve-textarea ve-q-explain" placeholder="Nhập giải thích cho câu hỏi này...">${q.explain || ''}</textarea>
+      </div>
+    `;
+    
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+};
+
+window.extractVisualEditorData = function() {
+  const container = document.getElementById('veContainer');
+  const cards = container.querySelectorAll('.ve-qcard');
+  const newData = [];
+  
+  cards.forEach(card => {
+    const qIdx = card.dataset.idx;
+    const question = card.querySelector('.ve-q-content').value;
+    const explain = card.querySelector('.ve-q-explain').value;
+    
+    const optionRows = card.querySelectorAll('.ve-option-row');
+    const options = [];
+    let answer = -1;
+    
+    optionRows.forEach((row, oIdx) => {
+      options.push(row.querySelector('.ve-o-content').value);
+      if (row.querySelector('input[type="radio"]').checked) {
+        answer = oIdx;
+      }
+    });
+    
+    newData.push({
+      question,
+      options,
+      answer,
+      explain: explain || undefined
+    });
+  });
+  
+  _veData = newData;
+};
+
+window.veAddQuestion = function() {
+  _veData.push({
+    question: "",
+    options: ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
+    answer: 0
+  });
+  window.renderVisualEditor();
+  // Scroll to bottom
+  setTimeout(() => {
+    const container = document.getElementById('editExamVisualBody');
+    container.scrollTop = container.scrollHeight;
+  }, 100);
+};
+
+window.veRemoveQuestion = function(idx) {
+  window.extractVisualEditorData();
+  _veData.splice(idx, 1);
+  window.renderVisualEditor();
+};
+
+window.veAddOption = function(qIdx) {
+  window.extractVisualEditorData();
+  if (!_veData[qIdx].options) _veData[qIdx].options = [];
+  _veData[qIdx].options.push("");
+  window.renderVisualEditor();
+};
+
+window.veRemoveOption = function(qIdx, oIdx) {
+  window.extractVisualEditorData();
+  _veData[qIdx].options.splice(oIdx, 1);
+  // Cập nhật lại answer index nếu cần
+  if (_veData[qIdx].answer === oIdx) _veData[qIdx].answer = -1;
+  else if (_veData[qIdx].answer > oIdx) _veData[qIdx].answer--;
+  window.renderVisualEditor();
 };
 
 window.formatEditExamJson = function () {
@@ -1418,6 +1615,17 @@ window.formatEditExamJson = function () {
 window.saveEditExamContent = async function () {
   if (!_editingFileId) return;
   const textarea = document.getElementById('editExamTextarea');
+  
+  if (_activeEditExamTab === 'visual') {
+    try {
+      window.extractVisualEditorData();
+      textarea.value = JSON.stringify(_veData, null, 2);
+    } catch(e) {
+      cloudAlert({ title: 'Lỗi', message: 'Không thể trích xuất dữ liệu trực quan: ' + e.message, icon: '❌' });
+      return;
+    }
+  }
+
   const raw = textarea.value;
 
   // Validate JSON

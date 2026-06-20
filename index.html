@@ -566,13 +566,26 @@
           </div>
           <button class="btn-close-drive" onclick="window.closeEditExamModal()">✕</button>
         </div>
-        <div class="edit-exam-body">
+        <div class="ve-tabs">
+          <div class="ve-tab" id="tabVisualEditor" onclick="window.switchEditExamTab('visual')">Trực quan (Cho người mới)</div>
+          <div class="ve-tab active" id="tabJsonEditor" onclick="window.switchEditExamTab('json')">JSON (Chuyên gia)</div>
+        </div>
+
+        <div class="edit-exam-body" id="editExamJsonBody">
           <div class="edit-exam-hint">⚠️ Chỉnh sửa trực tiếp JSON bên dưới. Phải là JSON hợp lệ (mảng các câu hỏi).</div>
           <textarea id="editExamTextarea" class="edit-exam-textarea" spellcheck="false" placeholder="Đang tải nội dung..."></textarea>
         </div>
+
+        <div class="edit-exam-body" id="editExamVisualBody" style="display: none; padding: 10px; background: var(--bg-body); border-radius: 8px;">
+          <div id="veContainer" class="ve-container"></div>
+          <div class="ve-actions">
+            <button class="ve-btn-add" onclick="window.veAddQuestion()">+ Thêm Câu Hỏi Mới</button>
+          </div>
+        </div>
+
         <div class="edit-exam-footer">
           <button class="ms-btn ms-btn-cancel" onclick="window.closeEditExamModal()">✕ Hủy</button>
-          <button class="ms-btn ms-btn-move" onclick="window.formatEditExamJson()">🔧 Format JSON</button>
+          <button class="ms-btn ms-btn-move" id="btnFormatJson" onclick="window.formatEditExamJson()">🔧 Format JSON</button>
           <button class="ms-btn ms-btn-save" onclick="window.saveEditExamContent()">💾 Lưu</button>
         </div>
       </div>
@@ -701,6 +714,7 @@
         <div id="cloudAlertMessage" class="cloud-alert-message">Bạn có chắc chắn?</div>
         <div id="cloudAlertInputWrapper" style="display: none; margin-top: 15px; width: 100%;">
           <input type="text" id="cloudAlertInput" class="cloud-alert-input" />
+          <textarea id="cloudAlertTextarea" class="cloud-alert-input" style="display: none; resize: vertical; min-height: 100px; font-family: monospace;"></textarea>
         </div>
         <div class="cloud-alert-actions">
           <button id="btnCloudAlertCancel" class="cloud-alert-btn cancel">Hủy</button>
