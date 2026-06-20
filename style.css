@@ -4257,18 +4257,24 @@ body.dark-mode #studyOverlay .study-sidebar {
 
   .cloud-toolbar {
     padding: 10px 12px;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
   }
 
   .cloud-breadcrumb {
     width: 100%;
-    margin-bottom: 4px;
+    margin-bottom: 0;
   }
 
   .cloud-actions {
     width: 100%;
     justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .cloud-actions::-webkit-scrollbar {
+    display: none;
   }
 
   .btn-action-label {
@@ -4277,8 +4283,9 @@ body.dark-mode #studyOverlay .study-sidebar {
   }
 
   .btn-cloud-action {
-    padding: 8px 14px;
-    border-radius: 12px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    flex-shrink: 0;
   }
 
   .btn-action-icon {
@@ -4291,41 +4298,33 @@ body.dark-mode #studyOverlay .study-sidebar {
 
   .cloud-grid,
   .drive-skeleton-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
   }
 
   .cloud-item {
-    height: 130px;
-    padding: 14px 8px 10px;
+    height: 120px;
+    padding: 12px 8px 8px;
   }
 
   .icon-box {
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
-    border-radius: 14px;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    border-radius: 12px;
   }
 
   .cloud-name {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .cloud-skeleton {
-    height: 130px;
+    height: 120px;
   }
 
   /* Always show dots on mobile */
   .btn-menu-dots {
     opacity: 1;
-  }
-}
-
-@media (max-width: 380px) {
-
-  .cloud-grid,
-  .drive-skeleton-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -9146,3 +9145,45 @@ body.exam-taking #examHistorySummary {
 / *   V I S U A L   E D I T O R   C S S   * / 
  
  
+/* ── Mobile Fixes for Multi Select and Visual Editor ── */
+@media (max-width: 640px) {
+  .multi-select-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+    gap: 8px;
+  }
+  .ms-actions {
+    justify-content: stretch;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .ms-btn {
+    flex-shrink: 0;
+  }
+  
+  .ve-tabs {
+    width: 100%;
+  }
+  .ve-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .ve-qcard {
+    padding: 14px;
+  }
+  .ve-options .ve-option-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .cloud-actions .cloud-upload-wrapper {
+    width: auto;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+}
