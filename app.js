@@ -622,6 +622,10 @@ async function handleDataLoaded(data, fileName, cloudDocId = null, cloudCreatedA
               <span class="emoji-pop">🔄</span>
               <span>Đổi đề khác</span>
             </button>
+            <button class="home-secondary-action" type="button" onclick="window.clearSelectedExam()" style="color:#ef4444; border-color:#fca5a5; background:rgba(254,242,242,0.8);">
+              <span class="emoji-pop">❌</span>
+              <span>Bỏ chọn</span>
+            </button>
           </div>
         </div>
         <div class="home-focus-panel">
@@ -640,7 +644,19 @@ async function handleDataLoaded(data, fileName, cloudDocId = null, cloudCreatedA
   await checkCurrentExamHistorySummary(fileName);
 }
 
+
 // Expose functions to window (vì dùng type=module)
+window.clearSelectedExam = function() {
+  pendingData = null;
+  questionsData = [];
+  var histSummary = document.getElementById("examHistorySummary");
+  if (histSummary) histSummary.style.display = "none";
+  renderHomeScreen();
+  updateFileStatus("", false);
+  if (typeof updateQSB === 'function') updateQSB();
+  if (typeof updateWrapperPadding === 'function') updateWrapperPadding();
+};
+
 window.startExamNow = async function () {
   if (!pendingData) {
     cloudAlert({ title: "Thông báo", message: "Vui lòng chọn file đề trước!", icon: "ℹ️" });
