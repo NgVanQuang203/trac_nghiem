@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MindQuiz - Ôn tập thông minh & AI Tutor</title>
-    <link rel="stylesheet" href="style.css?v=6.0" />
-    <link rel="stylesheet" href="style-darkmode.css?v=6.0" />
+    <link rel="stylesheet" href="style.css?v=7.4" />
+    <link rel="stylesheet" href="style-darkmode.css?v=7.4" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
@@ -66,96 +66,114 @@
           </div>
         </div>
 
-        <div class="header-center">
-          <div id="setupPanel" class="setup-panel">
-            <div class="file-select-group">
-              <div class="cloud-upload-wrapper">
-                <button class="btn-upload" id="btnUploadLocal" type="button">
-                  <span class="menu-emoji emoji-pop" aria-hidden="true">📄</span>
-                  <span>Chọn File</span>
+        <!-- Nút mở menu trên header (mobile) — luôn hiển thị -->
+        <button id="mobileOpenMenuBtn" class="mob-open-btn" onclick="window.openMobileDrawer && window.openMobileDrawer()" aria-label="Mở menu">
+          <span class="mob-open-icon mob-open-icon--default">☰</span>
+          <span class="mob-open-icon mob-open-icon--file" style="display:none">📄</span>
+          <span class="mob-open-label" id="mobOpenLabel">Menu</span>
+          <span class="mob-open-chevron">›</span>
+        </button>
+
+        <!-- Phần có thể thu/mở trên mobile -->
+        <div class="mobile-menu-body">
+          <div class="header-center">
+            <div id="setupPanel" class="setup-panel">
+              <div class="file-select-group">
+                <div class="cloud-upload-wrapper">
+                  <button class="btn-upload" id="btnUploadLocal" type="button">
+                    <span class="menu-emoji emoji-pop" aria-hidden="true">📄</span>
+                    <span>Chọn File</span>
+                  </button>
+                  <input type="file" id="fileInput" class="cloud-file-input" accept=".json" multiple onchange="loadFileFromLocal()" onmousedown="window.forceFocusBack()" />
+                </div>
+
+                <button
+                  class="btn-icon-drive"
+                  id="btnSelectDrive"
+                  title="Chọn từ Kho Đề Của Tôi"
+                >
+                  <span class="menu-emoji emoji-pop" aria-hidden="true">🗂️</span>
+                  <span>Kho Đề</span>
                 </button>
-                <input type="file" id="fileInput" class="cloud-file-input" accept=".json" multiple onchange="loadFileFromLocal()" onmousedown="window.forceFocusBack()" />
               </div>
 
-              <button
-                class="btn-icon-drive"
-                id="btnSelectDrive"
-                title="Chọn từ Kho Đề Của Tôi"
-              >
-                <span class="menu-emoji emoji-pop" aria-hidden="true">🗂️</span>
-                <span>Kho Đề</span>
-              </button>
-            </div>
-
-            <div id="fileStatusLabel" class="file-status">
-              <span class="file-status-dot"></span>
-              <span>Chưa chọn đề</span>
-            </div>
-
-            <div class="action-group">
-              <div class="time-wrapper">
-                <input
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                  id="timeInput"
-                  value="15"
-                  class="input-time"
-                />
-                <span class="unit">phút</span>
+              <div id="fileStatusLabel" class="file-status">
+                <span class="file-status-dot"></span>
+                <span>Chưa chọn đề</span>
               </div>
-              <button class="btn-start" id="btnStart" disabled>
-                <span class="menu-emoji emoji-pop" aria-hidden="true">🚀</span>
-                <span>Bắt đầu</span>
-              </button>
+
+              <div class="action-group">
+                <div class="time-wrapper">
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                    id="timeInput"
+                    value="15"
+                    class="input-time"
+                  />
+                  <span class="unit">phút</span>
+                </div>
+                <button class="btn-start" id="btnStart" disabled>
+                  <span class="menu-emoji emoji-pop" aria-hidden="true">🚀</span>
+                  <span>Bắt đầu</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="statusPanel" class="status-panel" style="display: none">
+              <div class="status-info">
+                <div class="exam-live-label">Đang làm bài</div>
+                <div id="examName" class="exam-name-display">Đang tải...</div>
+                <div class="status-timer-icon" aria-hidden="true"><i data-lucide="timer"></i></div>
+                <div id="timer" class="timer-display">--:--</div>
+              </div>
+              <div class="status-actions">
+                <button id="btnGradeHeader" class="btn-finish">
+                  <span class="menu-emoji emoji-pop" aria-hidden="true">🚀</span>
+                  <span>Nộp bài</span>
+                </button>
+                <button id="btnReset" class="btn-outline" title="Thoát / làm lại">
+                  <span class="menu-emoji emoji-pop" aria-hidden="true">🚪</span>
+                </button>
+                <button id="btnToggleNavMobileInHeader" class="mobile-only">
+                  <span class="menu-emoji emoji-pop" aria-hidden="true">📋</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div id="statusPanel" class="status-panel" style="display: none">
-            <div class="status-info">
-              <div class="exam-live-label">Đang làm bài</div>
-              <div id="examName" class="exam-name-display">Đang tải...</div>
-              <div class="status-timer-icon" aria-hidden="true"><i data-lucide="timer"></i></div>
-              <div id="timer" class="timer-display">--:--</div>
+          <div class="header-right">
+            <div id="topResult" class="mini-score" style="display: none">--%</div>
+            <button id="btnOpenStudy" class="btn-tool" title="Các chế độ học tập">
+              <span class="menu-emoji emoji-pop" aria-hidden="true">🎓</span>
+              <span class="btn-tool-label">Học tập</span>
+            </button>
+            <button id="btnToggleDark" class="btn-tool" title="Chế độ tối/sáng">
+              <span class="menu-emoji emoji-pop" aria-hidden="true">🌙</span>
+              <span class="btn-tool-label">Giao diện</span>
+            </button>
+            <button id="btnViewHistory" class="btn-tool" title="Xem lịch sử">
+              <span class="menu-emoji emoji-pop" aria-hidden="true">📈</span>
+              <span class="btn-tool-label">Lịch sử</span>
+            </button>
+            <div class="user-dropdown">
+              <button id="btnLogin" class="btn-login"><span class="emoji-pop">🔐</span><span>Đăng nhập</span></button>
+              <div id="userSection" style="display: none" class="user-info">
+                <img id="userAvatar" src="" alt="User" />
+                <button id="btnLogout" class="btn-logout">Exit</button>
+              </div>
             </div>
-            <div class="status-actions">
-              <button id="btnGradeHeader" class="btn-finish">
-                <span class="menu-emoji emoji-pop" aria-hidden="true">🚀</span>
-                <span>Nộp bài</span>
-              </button>
-              <button id="btnReset" class="btn-outline" title="Thoát / làm lại">
-                <span class="menu-emoji emoji-pop" aria-hidden="true">🚪</span>
-              </button>
-              <button id="btnToggleNavMobileInHeader" class="mobile-only">
-                <span class="menu-emoji emoji-pop" aria-hidden="true">📋</span>
-              </button>
-            </div>
+            <button id="btnToggleNavMobile" class="btn-tool desktop-only">
+              <span class="menu-emoji emoji-pop" aria-hidden="true">📋</span>
+            </button>
           </div>
         </div>
+        <!-- /mobile-menu-body -->
 
-        <div class="header-right">
-          <div id="topResult" class="mini-score" style="display: none">--%</div>
-          <button id="btnOpenStudy" class="btn-tool" title="Các chế độ học tập">
-            <span class="menu-emoji emoji-pop" aria-hidden="true">🎓</span>
-          </button>
-          <button id="btnToggleDark" class="btn-tool" title="Chế độ tối/sáng">
-            <span class="menu-emoji emoji-pop" aria-hidden="true">🌙</span>
-          </button>
-          <button id="btnViewHistory" class="btn-tool" title="Xem lịch sử">
-            <span class="menu-emoji emoji-pop" aria-hidden="true">📈</span>
-          </button>
-          <div class="user-dropdown">
-            <button id="btnLogin" class="btn-login"><span class="emoji-pop">🔐</span><span>Đăng nhập</span></button>
-            <div id="userSection" style="display: none" class="user-info">
-              <img id="userAvatar" src="" alt="User" />
-              <button id="btnLogout" class="btn-logout">Exit</button>
-            </div>
-          </div>
-          <button id="btnToggleNavMobile" class="btn-tool desktop-only">
-            <span class="menu-emoji emoji-pop" aria-hidden="true">📋</span>
-          </button>
-        </div>
+        <!-- Backdrop cũ (giữ lại tương thích) -->
+        <div id="mobileMenuBackdrop" class="mobile-backdrop" style="display:none"></div>
 
         <button
           id="btnToggleHeaderMobile"
@@ -167,6 +185,7 @@
           <div class="progress-bar" id="examProgressBar"></div>
         </div>
       </header>
+
 
       <div
         id="examHistorySummary"
@@ -943,7 +962,7 @@
       const provider = new firebase.auth.GoogleAuthProvider();
     </script>
 
-    <script type="module" src="app.js?v=6.0"></script>
+    <script type="module" src="app.js?v=6.8"></script>
       <!-- AI CHAT MODAL — Hội thoại với Gia sư AI -->
     <div id="aiChatModal" class="aic-modal" onclick="if(event.target===this)window.closeAIChatModal()">
       <div class="aic-panel">
@@ -1080,5 +1099,142 @@
           });
       }
     </script>
-</body>
+
+    <!-- ═══════════════════════════════════════════
+         QUICK START BAR — nổi trên Bottom Nav khi đã chọn file
+    ═══════════════════════════════════════════ -->
+    <div class="quick-start-bar" id="quickStartBar" aria-live="polite">
+      <div class="qsb-file-info" id="qsbFileInfo">
+        <span class="qsb-file-icon">📄</span>
+        <span class="qsb-file-name" id="qsbFileName">Chưa chọn đề</span>
+      </div>
+      <div class="qsb-controls">
+        <div class="qsb-time-wrap">
+          <span class="qsb-time-label">⏱</span>
+          <input type="text" inputmode="numeric" pattern="[0-9]*"
+            id="timeInputQSB" value="15" class="qsb-time-input"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'');var t=document.getElementById('timeInput');if(t)t.value=this.value"/>
+          <span class="qsb-time-unit">ph</span>
+        </div>
+        <button class="qsb-start-btn" id="qsbStartBtn" type="button">
+          🚀 Bắt đầu
+        </button>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Điều hướng chính">
+      <button class="mbn-item active" id="mbnTabHome" aria-label="Trang chủ">
+        <div class="mbn-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3L21 12V20C21 20.5523 20.5523 21 20 21H15V16H9V21H4C3.44772 21 3 20.5523 3 20V12Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="mbn-label">Trang chủ</span>
+      </button>
+      <button class="mbn-item" id="mbnTabStudy" aria-label="Học tập" onclick="document.getElementById('btnOpenStudy')&&document.getElementById('btnOpenStudy').click();window.mbnSwitchTab&&window.mbnSwitchTab('study')">
+        <div class="mbn-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L2 8L12 13L22 8L12 3Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 16L12 21L22 16" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12L12 17L22 12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="mbn-label">Học tập</span>
+      </button>
+      <button class="mbn-item" id="mbnTabHistory" aria-label="Lịch sử" onclick="document.getElementById('btnViewHistory')&&document.getElementById('btnViewHistory').click();window.mbnSwitchTab&&window.mbnSwitchTab('history')">
+        <div class="mbn-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke-linecap="round"/><path d="M12 7V12L15.5 14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="mbn-label">Lịch sử</span>
+      </button>
+      <button class="mbn-item" id="mbnTabTheme">
+        <div class="mbn-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="mbn-label">Giao diện</span>
+      </button>
+      <button class="mbn-item mbn-menu-btn" id="mbnTabMenu">
+        <div class="mbn-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="6" x2="20" y2="6" stroke-linecap="round"/><line x1="4" y1="12" x2="20" y2="12" stroke-linecap="round"/><line x1="4" y1="18" x2="14" y2="18" stroke-linecap="round"/></svg>
+        </div>
+        <span class="mbn-label">Menu</span>
+      </button>
+    </nav>
+
+    <!-- MOBILE DRAWER -->
+    <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop"></div>
+    <div class="mobile-drawer" id="mobileDrawer" role="dialog" aria-modal="true">
+      <div class="mobile-drawer-handle"></div>
+      <div class="mobile-drawer-header">
+        <div class="mobile-drawer-title">
+          <div class="mobile-drawer-title-icon">🧠</div>
+          MindQuiz
+        </div>
+        <button class="mobile-drawer-close" id="mobileDrawerClose" aria-label="Đóng">✕</button>
+      </div>
+      <div class="mobile-drawer-body">
+
+        <span class="mdr-section-label">📚 Chọn đề thi</span>
+
+        <button class="mdr-item mdr-blue" id="mdrBtnUpload" type="button">
+          <div class="mdr-icon-box">📄</div>
+          <div class="mdr-content"><div class="mdr-title">Tải file lên</div><div class="mdr-desc">Chọn file .json từ thiết bị</div></div>
+          <span class="mdr-arrow">›</span>
+        </button>
+
+        <button class="mdr-item mdr-violet" id="mdrBtnDrive" type="button">
+          <div class="mdr-icon-box">🗂️</div>
+          <div class="mdr-content"><div class="mdr-title">Kho đề của tôi</div><div class="mdr-desc">Chọn từ Google Drive</div></div>
+          <span class="mdr-arrow">›</span>
+        </button>
+
+        <div id="mdrFileStatus" style="display:none" class="file-status">
+          <span class="file-status-dot"></span>
+          <span id="mdrFileStatusText">Chưa chọn đề</span>
+        </div>
+
+        <div id="mdrActionGroup" style="display:none;flex-direction:column;gap:10px">
+          <div class="time-wrapper">
+            <span style="font-size:14px;font-weight:700;color:#475569">⏱️ Thời gian</span>
+            <div style="display:flex;align-items:center;gap:4px">
+              <input type="text" inputmode="numeric" pattern="[0-9]*" id="timeInputMobile" value="15" class="input-time" style="width:50px;text-align:center"/>
+              <span class="unit">phút</span>
+            </div>
+          </div>
+          <button class="btn-start" id="btnStartMobile" disabled type="button">🚀 Bắt đầu làm bài</button>
+        </div>
+
+        <span class="mdr-section-label">🛠️ Công cụ</span>
+
+        <button class="mdr-item mdr-green" id="mdrBtnStudy" type="button">
+          <div class="mdr-icon-box">🎓</div>
+          <div class="mdr-content"><div class="mdr-title">Chế độ học tập</div><div class="mdr-desc">Flashcard, ôn sai, học từng phần</div></div>
+          <span class="mdr-arrow">›</span>
+        </button>
+
+        <button class="mdr-item mdr-orange" id="mdrBtnHistory" type="button">
+          <div class="mdr-icon-box">📈</div>
+          <div class="mdr-content"><div class="mdr-title">Lịch sử làm bài</div><div class="mdr-desc">Xem kết quả và tiến độ</div></div>
+          <span class="mdr-arrow">›</span>
+        </button>
+
+        <button class="mdr-item mdr-slate" id="mdrBtnTheme" type="button">
+          <div class="mdr-icon-box" id="mdrThemeIcon">🌙</div>
+          <div class="mdr-content"><div class="mdr-title" id="mdrThemeTitle">Chế độ tối</div><div class="mdr-desc">Chuyển dark / light mode</div></div>
+          <span class="mdr-arrow">›</span>
+        </button>
+
+        <span class="mdr-section-label">👤 Tài khoản</span>
+
+        <button class="mdr-item mdr-violet" id="mdrBtnLogin" type="button">
+          <div class="mdr-icon-box">🔐</div>
+          <div class="mdr-content"><div class="mdr-title">Đăng nhập</div><div class="mdr-desc">Google Sign-In</div></div>
+          <span class="mdr-arrow">›</span>
+        </button>
+
+        <div id="mdrUserInfo" class="mdr-item mdr-slate" style="display:none">
+          <img id="mdrUserAvatar" src="" alt="User" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;border:2px solid #e2e8f0"/>
+          <div class="mdr-content"><div class="mdr-title" id="mdrUserName">Người dùng</div><div class="mdr-desc">Đang đăng nhập</div></div>
+          <button id="mdrBtnLogout" type="button" style="font-size:12px;font-weight:700;color:#ef4444;background:#fff1f2;border:1px solid #fecaca;padding:5px 10px;border-radius:8px;cursor:pointer;flex-shrink:0">Thoát</button>
+        </div>
+
+      </div>
+    </div>
+  </body>
 </html>
+

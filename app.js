@@ -1755,10 +1755,6 @@ window.moveSelectedItems = async function () {
   const first = _selectedItems[0];
   window.openMoveModal(first.id, first.type, `${_selectedItems.length} mục đã chọn`, currentFolderId);
 };
-
-
-
-
 // ==========================================
 // FOLDER & FILE LOGIC — HELPERS
 // ==========================================
@@ -4417,7 +4413,6 @@ auth.onAuthStateChanged((user) => {
 });
 
 
-
 // ================================================================
 // EXAM REVIEW PAGE v5.0 — Viết lại hoàn toàn
 // ================================================================
@@ -5743,3 +5738,366 @@ window.openExamReview = async function(historyId) {
     if (navFab) navFab.style.display = 'none';
   }
 };
+
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// MOBILE NAVIGATION SYSTEM v3 — Bottom Nav + Drawer + Quick Start Bar
+// ═══════════════════════════════════════════════════════════════════
+(function initMobileNav() {
+  'use strict';
+
+  var drawer     = document.getElementById('mobileDrawer');
+  var backdrop   = document.getElementById('mobileDrawerBackdrop');
+  var closeBtn   = document.getElementById('mobileDrawerClose');
+  var menuTabBtn = document.getElementById('mbnTabMenu');
+  if (!drawer) return;
+
+  // === DRAWER OPEN / CLOSE ==========================================
+  window.openMobileDrawer = function() {
+    syncDrawerState();
+    drawer.classList.add('open');
+    if (backdrop) backdrop.classList.add('open');
+    if (menuTabBtn) menuTabBtn.classList.add('drawer-open');
+    document.body.style.overflow = 'hidden';
+  };
+  window.closeMobileDrawer = function() {
+    drawer.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+    if (menuTabBtn) menuTabBtn.classList.remove('drawer-open');
+    document.body.style.overflow = '';
+  };
+  window.toggleMobileDrawer = function() {
+    if (drawer.classList.contains('open')) window.closeMobileDrawer();
+    else window.openMobileDrawer();
+  };
+
+  if (backdrop) backdrop.addEventListener('click', window.closeMobileDrawer);
+  if (closeBtn)  closeBtn.addEventListener('click',  window.closeMobileDrawer);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) window.closeMobileDrawer();
+  });
+
+  // Swipe-down to close
+  var handle = document.querySelector('.mobile-drawer-handle');
+  if (handle) {
+    var sy = 0, drag = false;
+    handle.addEventListener('touchstart', function(e) { sy = e.touches[0].clientY; drag = true; }, { passive: true });
+    handle.addEventListener('touchmove',  function(e) {
+      if (!drag) return;
+      var d = e.touches[0].clientY - sy;
+      if (d > 0) { drawer.style.transform = 'translateY(' + d + 'px)'; drawer.style.transition = 'none'; }
+    }, { passive: true });
+    handle.addEventListener('touchend', function(e) {
+      if (!drag) return;
+      var d = e.changedTouches[0].clientY - sy;
+      drawer.style.transform = ''; drawer.style.transition = '';
+      if (d > 80) window.closeMobileDrawer();
+      drag = false;
+    });
+  }
+
+  // === BOTTOM NAV TABS =============================================
+  window.mbnSwitchTab = function(id) {
+    var map = { home:'mbnTabHome', study:'mbnTabStudy', history:'mbnTabHistory', theme:'mbnTabTheme' };
+    document.querySelectorAll('.mbn-item:not(.mbn-menu-btn)').forEach(function(b){ b.classList.remove('active'); });
+    var el = document.getElementById(map[id]);
+    if (el) el.classList.add('active');
+  };
+
+  // Home — đóng tất cả modal/panel trước khi về trang chủ
+  var t = document.getElementById('mbnTabHome');
+  if (t) t.addEventListener('click', function() {
+    // Đóng history modal nếu đang mở
+    var histModal = document.getElementById('historyModal');
+    if (histModal && histModal.style.display !== 'none') {
+      histModal.style.display = 'none';
+    }
+    // Đóng study overlay nếu đang mở
+    var studyOv = document.getElementById('studyOverlay');
+    if (studyOv && studyOv.classList.contains('open')) {
+      studyOv.classList.remove('open');
+    }
+    window.mbnSwitchTab('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Study
+  t = document.getElementById('mbnTabStudy');
+  if (t) t.addEventListener('click', function() {
+    var o = document.getElementById('btnOpenStudy'); if (o) o.click();
+    window.mbnSwitchTab('study');
+  });
+
+  // History
+  t = document.getElementById('mbnTabHistory');
+  if (t) t.addEventListener('click', function() {
+    var o = document.getElementById('btnViewHistory'); if (o) o.click();
+    window.mbnSwitchTab('history');
+  });
+
+  // Theme — toggle trực tiếp, không cần mở drawer
+  t = document.getElementById('mbnTabTheme');
+  if (t) t.addEventListener('click', function() {
+    var o = document.getElementById('btnToggleDark'); if (o) o.click();
+    // Flash hiệu ứng rồi trả về home (theme không giữ active)
+    window.mbnSwitchTab('theme');
+    setTimeout(function() { window.mbnSwitchTab('home'); }, 600);
+  });
+
+  // Khi historyModal đóng → reset tab về home
+  var histModal = document.getElementById('historyModal');
+  if (histModal) {
+    new MutationObserver(function() {
+      var isHidden = histModal.style.display === 'none' || !histModal.style.display;
+      if (isHidden) {
+        var histTab = document.getElementById('mbnTabHistory');
+        if (histTab && histTab.classList.contains('active')) {
+          window.mbnSwitchTab('home');
+        }
+      }
+    }).observe(histModal, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  // Khi studyOverlay đóng → reset tab về home
+  var studyOvEl = document.getElementById('studyOverlay');
+  if (studyOvEl) {
+    new MutationObserver(function() {
+      var isClosed = !studyOvEl.classList.contains('open');
+      if (isClosed) {
+        var studyTab = document.getElementById('mbnTabStudy');
+        if (studyTab && studyTab.classList.contains('active')) {
+          window.mbnSwitchTab('home');
+        }
+      }
+    }).observe(studyOvEl, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  // === DRAWER BUTTON WIRING ========================================
+
+  // Upload — GIU DRAWER MO de user thay file status roi set time
+  var mdrUpload = document.getElementById('mdrBtnUpload');
+  if (mdrUpload) mdrUpload.addEventListener('click', function() {
+    var o = document.getElementById('btnUploadLocal'); if (o) o.click();
+    // drawer stays open; MutationObserver updates action group
+  });
+
+  // Drive — similarly keep drawer open
+  var mdrDrive = document.getElementById('mdrBtnDrive');
+  if (mdrDrive) mdrDrive.addEventListener('click', function() {
+    var o = document.getElementById('btnSelectDrive'); if (o) o.click();
+    window.closeMobileDrawer(); // drive modal needs screen space
+  });
+
+  // Start in drawer
+  var bsm = document.getElementById('btnStartMobile');
+  if (bsm) bsm.addEventListener('click', function() {
+    var o = document.getElementById('btnStart');
+    if (o && !o.disabled) { o.click(); window.closeMobileDrawer(); }
+  });
+
+  // Study (in drawer)
+  var mdrStudy = document.getElementById('mdrBtnStudy');
+  if (mdrStudy) mdrStudy.addEventListener('click', function() {
+    var o = document.getElementById('btnOpenStudy'); if (o) o.click();
+    window.closeMobileDrawer(); window.mbnSwitchTab('study');
+  });
+
+  // History (in drawer)
+  var mdrHist = document.getElementById('mdrBtnHistory');
+  if (mdrHist) mdrHist.addEventListener('click', function() {
+    var o = document.getElementById('btnViewHistory'); if (o) o.click();
+    window.closeMobileDrawer(); window.mbnSwitchTab('history');
+  });
+
+  // Theme (in drawer)
+  var mdrTheme = document.getElementById('mdrBtnTheme');
+  if (mdrTheme) mdrTheme.addEventListener('click', function() {
+    var o = document.getElementById('btnToggleDark'); if (o) o.click();
+    updateThemeLabel();
+  });
+
+  // Login / Logout
+  var mdrLogin = document.getElementById('mdrBtnLogin');
+  if (mdrLogin) mdrLogin.addEventListener('click', function() {
+    var o = document.getElementById('btnLogin'); if (o) o.click();
+    window.closeMobileDrawer();
+  });
+  var mdrLogout = document.getElementById('mdrBtnLogout');
+  if (mdrLogout) mdrLogout.addEventListener('click', function() {
+    var o = document.getElementById('btnLogout'); if (o) o.click();
+    window.closeMobileDrawer();
+  });
+
+  // Sync all 3 time inputs (original, drawer, QSB)
+  function syncTime(val) {
+    ['timeInput','timeInputMobile','timeInputQSB'].forEach(function(id) {
+      var el = document.getElementById(id); if (el && el.value !== val) el.value = val;
+    });
+  }
+  ['timeInput','timeInputMobile','timeInputQSB'].forEach(function(id) {
+    var el = document.getElementById(id); if (!el) return;
+    el.addEventListener('input', function() {
+      var v = el.value.replace(/[^0-9]/g,''); el.value = v; syncTime(v);
+    });
+  });
+
+  // === QUICK START BAR (QSB) ======================================
+  var qsb      = document.getElementById('quickStartBar');
+  var qsbName  = document.getElementById('qsbFileName');
+  var qsbStart = document.getElementById('qsbStartBtn');
+
+  if (qsbStart) qsbStart.addEventListener('click', function() {
+    var o = document.getElementById('btnStart');
+    if (o && !o.disabled) o.click();
+  });
+
+  function updateQSB() {
+    var isMobile = window.innerWidth <= 850;
+
+    // --- UPDATE DRAWER ACTION GROUP (always, not just when mobile)
+    var btnStart   = document.getElementById('btnStart');
+    var fileLoaded = btnStart && !btnStart.disabled;
+    var origTxt    = document.querySelector('#fileStatusLabel span:last-child');
+    var fileName   = origTxt ? origTxt.textContent : '';
+
+    var mdrAction   = document.getElementById('mdrActionGroup');
+    var mdrStatus   = document.getElementById('mdrFileStatus');
+    var mdrStatTxt  = document.getElementById('mdrFileStatusText');
+    var bsmEl       = document.getElementById('btnStartMobile');
+
+    if (mdrAction)  mdrAction.style.display  = fileLoaded ? 'flex' : 'none';
+    if (bsmEl)      bsmEl.disabled           = !fileLoaded;
+    if (mdrStatus)  mdrStatus.style.display  = fileLoaded ? 'flex' : 'none';
+    if (mdrStatTxt && origTxt) mdrStatTxt.textContent = origTxt.textContent;
+
+    // --- SYNC TIME
+    var origTime = document.getElementById('timeInput');
+    if (origTime) syncTime(origTime.value);
+
+    // --- QSB visibility
+    if (!qsb) { updateHeaderBtn(fileLoaded ? fileName : null); return; }
+    if (!isMobile) { qsb.classList.remove('visible'); updateHeaderBtn(null); return; }
+
+    if (fileLoaded) {
+      qsb.classList.add('visible');
+      if (qsbName) qsbName.textContent = fileName.length > 22 ? fileName.slice(0,21)+'\u2026' : fileName;
+      if (qsbStart) qsbStart.disabled = false;
+      updateHeaderBtn(fileName);
+    } else {
+      qsb.classList.remove('visible');
+      updateHeaderBtn(null);
+    }
+  }
+
+  // === HEADER OPEN BUTTON ==========================================
+  var mobOpenLabel = document.getElementById('mobOpenLabel');
+  var mobOpenBtn   = document.getElementById('mobileOpenMenuBtn');
+
+  function updateHeaderBtn(fileName) {
+    if (!mobOpenLabel) return;
+    if (fileName) {
+      var short = fileName.length > 14 ? fileName.slice(0,13) + '…' : fileName;
+      mobOpenLabel.textContent = short;
+      if (mobOpenBtn) mobOpenBtn.classList.add('has-file');
+    } else {
+      mobOpenLabel.textContent = 'Menu';
+      if (mobOpenBtn) mobOpenBtn.classList.remove('has-file');
+    }
+  }
+
+  if (mobOpenBtn) mobOpenBtn.addEventListener('click', window.openMobileDrawer);
+
+  // === SYNC HELPERS ================================================
+  function syncDrawerState() {
+    updateQSB();
+    syncUserSection();
+    updateThemeLabel();
+  }
+
+  function syncUserSection() {
+    var origUser   = document.getElementById('userSection');
+    var mdrLoginEl = document.getElementById('mdrBtnLogin');
+    var mdrUInfo   = document.getElementById('mdrUserInfo');
+    var mdrAvatar  = document.getElementById('mdrUserAvatar');
+    var mdrNameEl  = document.getElementById('mdrUserName');
+    var origAvatarEl = document.getElementById('userAvatar');
+    if (!mdrLoginEl || !mdrUInfo) return;
+    var loggedIn = origUser && origUser.style.display !== 'none';
+    mdrLoginEl.style.display = loggedIn ? 'none' : 'flex';
+    mdrUInfo.style.display   = loggedIn ? 'flex' : 'none';
+    if (loggedIn && origAvatarEl && mdrAvatar) mdrAvatar.src = origAvatarEl.src;
+    if (loggedIn && mdrNameEl) {
+      var eEl = document.querySelector('.user-email,#userEmail,#userDisplayName');
+      mdrNameEl.textContent = eEl ? eEl.textContent : 'Ng\u01b0\u1eddi d\u00f9ng';
+    }
+  }
+
+  function updateThemeLabel() {
+    var icon  = document.getElementById('mdrThemeIcon');
+    var title = document.getElementById('mdrThemeTitle');
+    if (!icon || !title) return;
+    var dark = document.body.classList.contains('dark-mode');
+    icon.textContent  = dark ? '\u2600\ufe0f' : '\uD83C\uDF19';
+    title.textContent = dark ? 'Ch\u1ebf \u0111\u1ed9 s\u00e1ng' : 'Ch\u1ebf \u0111\u1ed9 t\u1ed1i';
+  }
+
+  // === MUTATION OBSERVERS ==========================================
+  var bs = document.getElementById('btnStart');
+  if (bs) new MutationObserver(updateQSB).observe(bs, { attributes: true });
+
+  var fsl = document.getElementById('fileStatusLabel');
+  if (fsl) new MutationObserver(updateQSB).observe(fsl, { childList:true, subtree:true, characterData:true });
+
+  new MutationObserver(updateThemeLabel).observe(document.body, { attributes:true, attributeFilter:['class'] });
+
+  var usel = document.getElementById('userSection');
+  if (usel) new MutationObserver(syncUserSection).observe(usel, { attributes:true });
+
+  window.addEventListener('resize', updateQSB);
+
+  // === WRAPPER PADDING — JS-controlled để không bị CSS specificity override ===
+  function updateWrapperPadding() {
+    if (window.innerWidth > 850) return; // desktop: không cần
+    var wrapper = document.querySelector('.exam-wrapper');
+    if (!wrapper) return;
+
+    var BN_H  = 64;  // bottom nav height
+    var QSB_H = 72;  // quick start bar height
+    var SAFE  = 0;   // env(safe-area-inset-bottom) – JS can't read this directly, use 0 and CSS handles it
+    var EXTRA = 12;  // breathing room
+
+    var qsbVisible = document.getElementById('quickStartBar') &&
+                     document.getElementById('quickStartBar').classList.contains('visible');
+
+    var pb = BN_H + (qsbVisible ? QSB_H : 0) + EXTRA;
+    wrapper.style.setProperty('padding-bottom', pb + 'px', 'important');
+  }
+
+  // Observe QSB visibility changes to update padding
+  var qsbEl = document.getElementById('quickStartBar');
+  if (qsbEl) {
+    new MutationObserver(updateWrapperPadding).observe(qsbEl, { attributes: true, attributeFilter: ['class'] });
+  }
+  window.addEventListener('resize', updateWrapperPadding);
+
+  // === EXAM MODE: hide QSB + BottomNav ============================
+  function checkExamMode() {
+    var eh = document.getElementById('examActiveHeader');
+    var bn = document.getElementById('mobileBottomNav');
+    var qb = document.getElementById('quickStartBar');
+    var isExam = eh && eh.style.display !== 'none';
+    if (bn) bn.style.display = isExam ? 'none' : '';
+    if (qb) { if (isExam) qb.classList.remove('visible'); }
+    updateWrapperPadding();
+  }
+  var ehl = document.getElementById('examActiveHeader');
+  if (ehl) new MutationObserver(checkExamMode).observe(ehl, { attributes:true, attributeFilter:['style'] });
+
+  // Init
+  updateQSB();
+  updateThemeLabel();
+  syncUserSection();
+  checkExamMode();
+  updateWrapperPadding();
+
+})();
