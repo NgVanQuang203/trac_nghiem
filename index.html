@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MindQuiz - Ôn tập thông minh & AI Tutor</title>
-    <link rel="stylesheet" href="style.css?v=7.5" />
+    <link rel="stylesheet" href="style.css?v=8.0" />
     <link rel="stylesheet" href="style-darkmode.css?v=7.5" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -196,55 +196,85 @@
       <main class="exam-body">
         <section class="exam-main">
           <div id="quiz">
-            <div class="home-shell">
-              <section class="home-hero">
-                <div class="home-hero-copy">
-                  <span class="home-kicker">MindQuiz Workspace</span>
-                  <h2>🎯 Luyện đề tập trung, theo dõi tiến bộ rõ ràng</h2>
-                  <p>📝 Chọn đề từ máy hoặc Kho Đề, đặt thời gian và bắt đầu phiên làm bài ngay trên cùng một màn hình.</p>
-                  <div class="home-actions">
-                    <button class="home-primary-action" type="button" onclick="document.getElementById('fileInput').click()">
-                    <span class="emoji-pop">📄</span>
+            <div class="learn-home">
+              <section class="learn-stage">
+                <div class="learn-stage-copy">
+                  <span class="learn-eyebrow"><i data-lucide="sparkles"></i> MindQuiz Learning OS</span>
+                  <h2>Vào đề nhanh. Biết mình yếu đâu. Ôn lại đúng chỗ.</h2>
+                  <p>Trang chủ mới hoạt động như một bàn khởi động học tập: nạp đề, đặt nhịp làm bài, theo dõi phiên học và chuyển sang ôn câu sai sau khi hoàn thành.</p>
+                  <div class="learn-actions">
+                    <button class="learn-action-primary" type="button" onclick="document.getElementById('fileInput').click()">
+                      <i data-lucide="file-up"></i>
                       <span>Tải đề JSON</span>
                     </button>
-                    <button class="home-secondary-action" type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
-                    <span class="emoji-pop">🗂️</span>
-                      <span>Mở Kho Đề</span>
+                    <button class="learn-action-secondary" type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
+                      <i data-lucide="folder-open"></i>
+                      <span>Kho Đề</span>
                     </button>
                   </div>
                 </div>
-                <div class="home-focus-panel">
-                  <div class="focus-ring">
-                    <span class="emoji-pulse">🎯</span>
+                <aside class="learn-console">
+                  <div class="learn-console-head">
+                    <span>Phiên học đang chờ</span>
+                    <i data-lucide="scan-line"></i>
                   </div>
-                  <div>
-                    <span>Phiên luyện tập</span>
-                    <strong id="homeSelectedExam">Chưa có đề được chọn</strong>
+                  <strong id="homeSelectedExam">Chưa có đề được chọn</strong>
+                  <div class="learn-console-metrics">
+                    <span><i data-lucide="timer"></i><b id="homeTimePreview">15</b> phút</span>
+                    <span><i data-lucide="activity"></i>Chưa bắt đầu</span>
                   </div>
+                  <div class="learn-readiness" aria-hidden="true">
+                    <span class="is-on"></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </aside>
+              </section>
+              <section class="learn-track" aria-label="Lộ trình ôn luyện">
+                <div class="learn-track-line"></div>
+                <div class="learn-step is-active"><span>01</span><strong>Nạp đề</strong><small>JSON hoặc Kho Đề</small></div>
+                <div class="learn-step"><span>02</span><strong>Làm bài</strong><small>Đồng hồ <b id="homeTimePreviewCard">15</b> phút</small></div>
+                <div class="learn-step"><span>03</span><strong>Phân tích</strong><small>Điểm, đáp án, lịch sử</small></div>
+                <div class="learn-step"><span>04</span><strong>Ôn lại</strong><small>Tập trung câu sai</small></div>
+              </section>
+              <section class="learn-heatmap" aria-label="Bản đồ duy trì học tập">
+                <div class="learn-heatmap-copy">
+                  <span><i data-lucide="flame"></i> Động lực học tập</span>
+                  <strong>0 ngày streak</strong>
+                  <small>Làm bài đầu tiên để thắp sáng bản đồ học tập</small>
+                </div>
+                <div class="learn-heatmap-board" aria-hidden="true">
+                  <span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span>
+                  <span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span>
+                  <span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span>
+                  <span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span>
+                  <span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span>
+                  <span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span>
+                  <span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span><span class="learn-heat-cell level-0"></span>
+                </div>
+                <div class="learn-heatmap-stats">
+                  <span><b>0</b> ngày có học</span>
+                  <span><b>0</b> phiên</span>
                 </div>
               </section>
-              <section class="home-grid">
-                <article class="home-card">
-                  <div class="home-card-icon-wrapper bg-blue-light emoji-pop">🗂️</div>
-                  <div class="home-card-info">
-                    <span class="home-card-title">Nguồn đề</span>
-                    <strong class="home-card-value">Local / Cloud</strong>
-                  </div>
-                </article>
-                <article class="home-card">
-                  <div class="home-card-icon-wrapper bg-orange-light emoji-pop">⏱️</div>
-                  <div class="home-card-info">
-                    <span class="home-card-title">Thời lượng</span>
-                    <strong class="home-card-value"><span id="homeTimePreview">15</span> phút</strong>
-                  </div>
-                </article>
-                <article class="home-card">
-                  <div class="home-card-icon-wrapper bg-green-light emoji-pop">📈</div>
-                  <div class="home-card-info">
-                    <span class="home-card-title">Lịch sử</span>
-                    <strong class="home-card-value">Tự động phân tích</strong>
-                  </div>
-                </article>
+              <section class="learn-mode-strip" aria-label="Chế độ học tập">
+                <button type="button" onclick="document.getElementById('btnOpenStudy')&&document.getElementById('btnOpenStudy').click()">
+                  <i data-lucide="layers-3"></i>
+                  <span>Flashcard</span>
+                </button>
+                <button type="button" onclick="document.getElementById('btnViewHistory')&&document.getElementById('btnViewHistory').click()">
+                  <i data-lucide="chart-spline"></i>
+                  <span>Lịch sử học</span>
+                </button>
+                <button type="button" onclick="document.getElementById('btnOpenStudy')&&document.getElementById('btnOpenStudy').click()">
+                  <i data-lucide="rotate-ccw"></i>
+                  <span>Ôn câu sai</span>
+                </button>
+                <button type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
+                  <i data-lucide="library-big"></i>
+                  <span>Kho đề cá nhân</span>
+                </button>
               </section>
             </div>
           </div>
@@ -690,9 +720,9 @@
               🎓
             </div>
             <div class="st-info">
-              <div class="st-title">Ôn lại câu sai</div>
+              <div class="st-title">Ôn câu sai của đề này</div>
               <div class="st-desc">
-                Chỉ làm lại những câu vừa làm sai trong bài thi gần nhất.
+                Luyện các câu còn nợ trên Cloud của đề đang chọn, đúng thì giảm nợ, sai thì ghi nhớ thêm.
               </div>
             </div>
           </div>
@@ -714,9 +744,9 @@
               🧠
             </div>
             <div class="st-info">
-              <div class="st-title">Luyện câu hay sai</div>
+              <div class="st-title">Luyện điểm yếu từ lịch sử</div>
               <div class="st-desc">
-                Tổng hợp tất cả câu sai từ Lịch sử để ôn tập lại.
+                Gom các câu từng sai có đủ đáp án thật để luyện lại theo mức độ hay mắc lỗi.
               </div>
             </div>
           </div>
@@ -962,7 +992,7 @@
       const provider = new firebase.auth.GoogleAuthProvider();
     </script>
 
-    <script type="module" src="app.js?v=6.8"></script>
+    <script type="module" src="app.js?v=8.0"></script>
       <!-- AI CHAT MODAL — Hội thoại với Gia sư AI -->
     <div id="aiChatModal" class="aic-modal" onclick="if(event.target===this)window.closeAIChatModal()">
       <div class="aic-panel">

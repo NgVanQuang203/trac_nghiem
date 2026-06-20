@@ -173,6 +173,7 @@ let examTotalSeconds = 0;
 let globalHistoryData = [];
 let driveCache = {}; // Lưu trữ dữ liệu folder đã tải để không phải tải lại
 let isReviewMode = false; // Trạng thái chế độ ôn tập
+let activeReviewSession = null;
 let scoreChart = null;
 
 const API_KEY = "AIzaSyAry4xCdznJGeWvTi1NtId0q6YgPfZdwrg"; // Key cũ cho Drive (nếu cần)
@@ -297,10 +298,10 @@ async function updateMistakeInCloud(examName, questionText, isCorrect) {
   if (!safeExamId) return 0;
   const originalKey = encodeKey(questionText);
   const qKey = getSmartKey(questionText);
-  let targetKey = originalKey; // Mặc định dùng khóa tạo từ text
+  let targetKey = qKey; // Dùng smart key để tránh field quá dài, nhưng vẫn tìm khóa cũ bên dưới.
 
   // Kiểm tra độ dài khóa (Firestore giới hạn 1500 bytes)
-  if (targetKey.length > 1000) {
+  if (originalKey.length > 1000) {
     console.warn(
       "⚠️ Câu hỏi quá dài, có thể gây lỗi Cloud:",
       questionText.substring(0, 50) + "..."
@@ -330,15 +331,19 @@ async function updateMistakeInCloud(examName, questionText, isCorrect) {
       const data = doc.data();
 
       // Trường hợp 1: Khóa khớp hoàn toàn
-      if (data[targetKey] !== undefined) {
-        currentCount = data[targetKey];
+      if (data[originalKey] !== undefined) {
+        targetKey = originalKey;
+        currentCount = getMistakeCountValue(data[originalKey]);
+      } else if (data[qKey] !== undefined) {
+        targetKey = qKey;
+        currentCount = getMistakeCountValue(data[qKey]);
       }
       // Trường hợp 2: Khóa bị lệch (do khoảng trắng/encode), phải đi tìm
       else {
         // Quét tất cả các khóa đang có để tìm câu tương tự
         const cleanQ = questionText.trim();
         const foundKey = Object.keys(data).find((k) => {
-          if (k === "last_updated") return false;
+          if (isMistakeMetaKey(k)) return false;
           try {
             // Giải mã khóa cũ xem có khớp nội dung không
             return decodeKey(k).trim() === cleanQ;
@@ -350,7 +355,7 @@ async function updateMistakeInCloud(examName, questionText, isCorrect) {
         if (foundKey) {
           console.log("🔧 Đã tìm thấy khóa khớp (Fix lỗi lệch):", foundKey);
           targetKey = foundKey; // Dùng khóa thực tế trong DB
-          currentCount = data[foundKey];
+          currentCount = getMistakeCountValue(data[foundKey]);
         }
       }
     }
@@ -369,7 +374,7 @@ async function updateMistakeInCloud(examName, questionText, isCorrect) {
 
       await docRef.set(
         {
-          [qKey]: valueToSave,
+          [targetKey]: valueToSave,
           last_updated: firebase.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -380,7 +385,7 @@ async function updateMistakeInCloud(examName, questionText, isCorrect) {
       if (currentCount <= 1) {
         // Hết nợ -> Xóa field
         await docRef.update({
-          [qKey]: firebase.firestore.FieldValue.delete(),
+          [targetKey]: firebase.firestore.FieldValue.delete(),
         });
         return 0;
       } else {
@@ -393,7 +398,7 @@ async function updateMistakeInCloud(examName, questionText, isCorrect) {
         }
 
         await docRef.update({
-          [qKey]: valueToSave,
+          [targetKey]: valueToSave,
         });
         return newCount;
       }
@@ -482,53 +487,128 @@ function updateFileStatus(name, ready) {
   if (window.lucide) lucide.createIcons();
 }
 
+function getAttemptDateKey(attempt) {
+  const date = attempt?.timestamp?.toDate?.() || (attempt?.dateStr ? new Date(attempt.dateStr) : null);
+  if (!date || Number.isNaN(date.getTime())) return null;
+  return date.toISOString().split("T")[0];
+}
+
+function renderHomeHeatmapHTML() {
+  const today = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const counts = new Map();
+  (globalHistoryData || []).forEach((attempt) => {
+    const key = getAttemptDateKey(attempt);
+    if (!key) return;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+
+  let activeDays = 0;
+  let totalSessions = 0;
+  const cells = [];
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * dayMs);
+    const key = d.toISOString().split("T")[0];
+    const count = counts.get(key) || 0;
+    if (count) activeDays++;
+    totalSessions += count;
+    const level = count >= 4 ? 4 : count;
+    cells.push(`<span class="learn-heat-cell level-${level}" title="${key}: ${count} phiên"></span>`);
+  }
+
+  const streak = userStats?.streak || 0;
+  const subtitle = totalSessions
+    ? `${totalSessions} phiên trong 28 ngày gần đây`
+    : "Làm bài đầu tiên để thắp sáng bản đồ học tập";
+
+  return `
+    <section class="learn-heatmap" aria-label="Bản đồ duy trì học tập">
+      <div class="learn-heatmap-copy">
+        <span><i data-lucide="flame"></i> Động lực học tập</span>
+        <strong>${streak} ngày streak</strong>
+        <small>${subtitle}</small>
+      </div>
+      <div class="learn-heatmap-board" aria-hidden="true">${cells.join("")}</div>
+      <div class="learn-heatmap-stats">
+        <span><b>${activeDays}</b> ngày có học</span>
+        <span><b>${totalSessions}</b> phiên</span>
+      </div>
+    </section>
+  `;
+}
+
+function refreshHomeHeatmap() {
+  document.querySelectorAll(".learn-heatmap").forEach((el) => {
+    el.outerHTML = renderHomeHeatmapHTML();
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
 function renderHomeScreen() {
   const quiz = document.getElementById("quiz");
   if (!quiz) return;
+  const minutes = document.getElementById("timeInput")?.value || 15;
   quiz.innerHTML = `
-    <div class="home-shell">
-      <section class="home-hero">
-        <div class="home-hero-copy">
-          <span class="home-kicker">MindQuiz Workspace</span>
-          <h2>🎯 Luyện đề tập trung, theo dõi tiến bộ rõ ràng</h2>
-          <p>Chọn đề từ máy hoặc Kho Đề, đặt thời gian và bắt đầu phiên làm bài ngay trên cùng một màn hình.</p>
-          <div class="home-actions">
-            <button class="home-primary-action" type="button" onclick="document.getElementById('fileInput').click()">
-              <span class="emoji-pop">📄</span>
+    <div class="learn-home">
+      <section class="learn-stage">
+        <div class="learn-stage-copy">
+          <span class="learn-eyebrow"><i data-lucide="sparkles"></i> MindQuiz Learning OS</span>
+          <h2>Vào đề nhanh. Biết mình yếu đâu. Ôn lại đúng chỗ.</h2>
+          <p>Trang chủ mới hoạt động như một bàn khởi động học tập: nạp đề, đặt nhịp làm bài, theo dõi phiên học và chuyển sang ôn câu sai sau khi hoàn thành.</p>
+          <div class="learn-actions">
+            <button class="learn-action-primary" type="button" onclick="document.getElementById('fileInput').click()">
+              <i data-lucide="file-up"></i>
               <span>Tải đề JSON</span>
             </button>
-            <button class="home-secondary-action" type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
-              <span class="emoji-pop">🗂️</span>
-              <span>Mở Kho Đề</span>
+            <button class="learn-action-secondary" type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
+              <i data-lucide="folder-open"></i>
+              <span>Kho Đề</span>
             </button>
           </div>
         </div>
-        <div class="home-focus-panel">
-          <div class="focus-ring">
-            <span class="emoji-pulse">🎯</span>
+        <aside class="learn-console">
+          <div class="learn-console-head">
+            <span>Phiên học đang chờ</span>
+            <i data-lucide="scan-line"></i>
           </div>
-          <div>
-            <span>Phiên luyện tập</span>
-            <strong id="homeSelectedExam">Chưa có đề được chọn</strong>
+          <strong id="homeSelectedExam">Chưa có đề được chọn</strong>
+          <div class="learn-console-metrics">
+            <span><i data-lucide="timer"></i><b id="homeTimePreview">${minutes}</b> phút</span>
+            <span><i data-lucide="activity"></i>Chưa bắt đầu</span>
           </div>
-        </div>
+          <div class="learn-readiness" aria-hidden="true">
+            <span class="is-on"></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </aside>
       </section>
-      <section class="home-grid">
-        <article class="home-card">
-          <span class="home-card-emoji emoji-pop">🗂️</span>
-          <span>🗂️ Nguồn đề</span>
-          <strong>Local / Cloud</strong>
-        </article>
-        <article class="home-card">
-          <span class="home-card-emoji emoji-pop">⏱️</span>
-          <span>⏱️ Thời lượng</span>
-          <strong><span id="homeTimePreview">${document.getElementById("timeInput")?.value || 15}</span> phút</strong>
-        </article>
-        <article class="home-card">
-          <span class="home-card-emoji emoji-pop">📈</span>
-          <span>📈 Lịch sử</span>
-          <strong>Có phân tích</strong>
-        </article>
+      <section class="learn-track" aria-label="Lộ trình ôn luyện">
+        <div class="learn-track-line"></div>
+        <div class="learn-step is-active"><span>01</span><strong>Nạp đề</strong><small>JSON hoặc Kho Đề</small></div>
+        <div class="learn-step"><span>02</span><strong>Làm bài</strong><small>Đồng hồ <b id="homeTimePreviewCard">${minutes}</b> phút</small></div>
+        <div class="learn-step"><span>03</span><strong>Phân tích</strong><small>Điểm, đáp án, lịch sử</small></div>
+        <div class="learn-step"><span>04</span><strong>Ôn lại</strong><small>Tập trung câu sai</small></div>
+      </section>
+      ${renderHomeHeatmapHTML()}
+      <section class="learn-mode-strip" aria-label="Chế độ học tập">
+        <button type="button" onclick="document.getElementById('btnOpenStudy')&&document.getElementById('btnOpenStudy').click()">
+          <i data-lucide="layers-3"></i>
+          <span>Flashcard</span>
+        </button>
+        <button type="button" onclick="document.getElementById('btnViewHistory')&&document.getElementById('btnViewHistory').click()">
+          <i data-lucide="chart-spline"></i>
+          <span>Lịch sử học</span>
+        </button>
+        <button type="button" onclick="document.getElementById('btnOpenStudy')&&document.getElementById('btnOpenStudy').click()">
+          <i data-lucide="rotate-ccw"></i>
+          <span>Ôn câu sai</span>
+        </button>
+        <button type="button" onclick="window.chooseExamFromDriveFolder && window.chooseExamFromDriveFolder()">
+          <i data-lucide="library-big"></i>
+          <span>Kho đề cá nhân</span>
+        </button>
       </section>
     </div>
   `;
@@ -583,6 +663,195 @@ function shuffleArray(arr) {
   return arr;
 }
 
+function isMistakeMetaKey(key) {
+  return ["last_updated", "_claimedBy", "_migrated", "_legacyMerged"].includes(key);
+}
+
+function getMistakeCountValue(value) {
+  if (typeof value === "number") return value;
+  if (value && typeof value === "object" && typeof value.c === "number") return value.c;
+  return 0;
+}
+
+function getReviewDebt(meta = {}) {
+  return Math.max(1, Number(meta.misses || meta.debt || 1));
+}
+
+function getReviewPriority(meta = {}) {
+  const debt = getReviewDebt(meta);
+  if (debt >= 4) return { label: "Ưu tiên cao", className: "high", hint: "Câu này cần được truy hồi lại nhiều lần." };
+  if (debt >= 2) return { label: "Cần củng cố", className: "medium", hint: "Hãy giải thích vì sao đáp án đúng trước khi chọn." };
+  return { label: "Kiểm tra lại", className: "low", hint: "Mục tiêu là trả lời chắc, không đoán." };
+}
+
+function getNextReviewLabel(remaining) {
+  if (remaining === -1) return "Chưa đồng bộ được, hãy thử lại khi có mạng ổn định.";
+  if (remaining > 0) return `Đúng rồi. Hãy gặp lại câu này sau 10-15 phút hoặc ở phiên sau, còn ${remaining} lượt củng cố.`;
+  return "Đã qua vòng này. Nên gặp lại sau 1-3 ngày để giữ trí nhớ dài hạn.";
+}
+
+function renderReviewCoach(q, index) {
+  if (!isReviewMode || !q.reviewMeta) return "";
+  const priority = getReviewPriority(q.reviewMeta);
+  const debt = getReviewDebt(q.reviewMeta);
+  const step = q.reviewMeta.retry ? "Vòng sửa lỗi" : "Truy hồi chủ động";
+  return `
+    <div class="review-coach ${priority.className}">
+      <div class="review-coach-main">
+        <span class="review-coach-kicker">${step}</span>
+        <strong>${priority.label}</strong>
+        <small>${priority.hint}</small>
+      </div>
+      <div class="review-coach-meta">
+        <span>Nợ <b>${debt}</b></span>
+        <span>Câu ${index + 1}</span>
+      </div>
+    </div>
+    <div class="review-recall-prompt">
+      <b>Trước khi nhìn đáp án:</b> tự trả lời trong đầu, rồi chọn phương án. Đây là bước giúp não luyện truy hồi thay vì chỉ nhận ra đáp án quen.
+    </div>
+  `;
+}
+
+function findQuestionInLoadedExam(questionText) {
+  const clean = normalizeText(questionText);
+  const pool = pendingData?.data || questionsData || [];
+  return pool.find((q) => normalizeText(q.question) === clean) || null;
+}
+
+function buildReviewQuestion(source, meta = {}) {
+  const fromLoaded = findQuestionInLoadedExam(source.q || source.question || "");
+  const question = fromLoaded?.question || source.q || source.question || "";
+  const answer = fromLoaded?.answer || source.a || source.answer || "";
+  const rawOptions = fromLoaded?.options || source.opts || source.options || [];
+  const options = Array.isArray(rawOptions) ? [...rawOptions] : [];
+  if (answer && !options.some((opt) => normalizeText(opt) === normalizeText(answer))) {
+    options.unshift(answer);
+  }
+  if (!question || !answer || options.length < 2) return null;
+  return {
+    question,
+    options: shuffleArray(options),
+    answer,
+    explain: fromLoaded?.explain || source.ex || source.explain || "Hãy đọc lại câu hỏi, so sánh đáp án đúng với lựa chọn cũ, rồi làm lại cho đến khi chắc.",
+    reviewMeta: {
+      ...meta,
+      debt: getReviewDebt(meta),
+    },
+  };
+}
+
+function collectWrongQuestionsFromHistory(examName = null) {
+  const map = new Map();
+  (globalHistoryData || []).forEach((attempt) => {
+    if (examName && attempt.examName !== examName) return;
+    (attempt.details || []).forEach((detail) => {
+      if (detail.s) return;
+      const key = normalizeText(detail.q);
+      if (!key) return;
+      const existing = map.get(key) || {
+        detail,
+        misses: 0,
+        examName: attempt.examName || examName || "Bài thi",
+        lastDate: attempt.timestamp?.toDate?.() || null,
+      };
+      existing.misses += 1;
+      if (!existing.lastDate && attempt.timestamp?.toDate) existing.lastDate = attempt.timestamp.toDate();
+      map.set(key, existing);
+    });
+  });
+
+  return Array.from(map.values())
+    .sort((a, b) => b.misses - a.misses)
+    .map((item) => buildReviewQuestion(item.detail, {
+      source: "history",
+      misses: item.misses,
+      examName: item.examName,
+      lastDate: item.lastDate,
+    }))
+    .filter(Boolean);
+}
+
+function startReviewSession(title, questions, resultHtml) {
+  if (!questions.length) {
+    cloudAlert({ title: "Chưa có dữ liệu ôn", message: "Không tìm thấy câu sai có đủ câu hỏi, đáp án đúng và các lựa chọn để luyện lại.", icon: "ℹ️" });
+    return;
+  }
+
+  activeReviewSession = {
+    title,
+    examName: questions[0]?.reviewMeta?.examName || pendingData?.name || title,
+    total: questions.length,
+    answered: 0,
+    correct: 0,
+    wrong: 0,
+    missedQuestions: [],
+    retryRound: questions.some((q) => q.reviewMeta?.retry),
+  };
+  questionsData = questions.sort((a, b) => getReviewDebt(b.reviewMeta) - getReviewDebt(a.reviewMeta));
+  isReviewMode = true;
+  examFinished = false;
+  setHeaderMode("active");
+  document.getElementById("examName").textContent = title;
+  const activeExamName = document.getElementById("activeExamName");
+  if (activeExamName) activeExamName.textContent = title;
+  document.getElementById("timer").textContent = "ÔN TẬP";
+  document.getElementById("btnGradeHeader").style.display = "none";
+  document.getElementById("btnGradeNav").style.display = "none";
+  const activeGrade = document.getElementById("btnActiveGrade");
+  if (activeGrade) activeGrade.style.display = "none";
+  document.getElementById("result").innerHTML = resultHtml || `<b style="color:#ea580c">Còn ${questions.length} câu cần khắc phục</b>`;
+  const flashcardContainer = document.getElementById("flashcardContainer");
+  if (flashcardContainer) flashcardContainer.style.display = "none";
+  document.getElementById("quiz").style.display = "block";
+  generateQuiz();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function updateReviewSessionResult() {
+  if (!activeReviewSession) return;
+  const left = Math.max(activeReviewSession.total - activeReviewSession.answered, 0);
+  document.getElementById("result").innerHTML =
+    `<b style="color:#16a34a">Đúng ${activeReviewSession.correct}</b> · ` +
+    `<b style="color:#dc2626">Sai ${activeReviewSession.wrong}</b> · ` +
+    `<b>Còn ${left}/${activeReviewSession.total}</b>`;
+  const panel = document.getElementById("reviewSessionPanel");
+  if (panel) {
+    const pct = activeReviewSession.total
+      ? Math.round((activeReviewSession.answered / activeReviewSession.total) * 100)
+      : 0;
+    const wrong = activeReviewSession.missedQuestions.length;
+    panel.querySelector(".review-session-fill").style.width = `${pct}%`;
+    panel.querySelector(".review-session-count").textContent =
+      `${activeReviewSession.answered}/${activeReviewSession.total}`;
+    panel.querySelector(".review-session-note").textContent = left
+      ? "Trả lời từng câu, xem phản hồi ngay, rồi để hệ thống giảm/cộng nợ."
+      : wrong
+        ? `Hoàn tất vòng này. Còn ${wrong} câu cần sửa ngay để khóa lại lỗi.`
+        : "Hoàn tất tuyệt vời. Hãy quay lại sau 1-3 ngày để giữ trí nhớ dài hạn.";
+    const retryBtn = panel.querySelector(".review-session-retry");
+    if (retryBtn) retryBtn.style.display = (!left && wrong) ? "inline-flex" : "none";
+  }
+}
+
+window.startReviewRetryRound = function () {
+  if (!activeReviewSession || !activeReviewSession.missedQuestions.length) return;
+  const retryQuestions = activeReviewSession.missedQuestions.map((q) => ({
+    ...q,
+    options: shuffleArray([...(q.options || [])]),
+    reviewMeta: {
+      ...(q.reviewMeta || {}),
+      retry: true,
+      debt: Math.max(1, getReviewDebt(q.reviewMeta)),
+    },
+  }));
+  startReviewSession(
+    `${activeReviewSession.title} - vòng sửa lỗi`,
+    retryQuestions,
+    `<b style="color:#dc2626">Sửa ngay ${retryQuestions.length} câu vừa sai</b>`
+  );
+};
+
 // ========================
 // LOGIC ĐỀ THI
 // ========================
@@ -607,36 +876,70 @@ async function handleDataLoaded(data, fileName, cloudDocId = null, cloudCreatedA
   updateFileStatus(fileName, true);
 
   document.getElementById("quiz").innerHTML = `
-    <div class="home-shell is-ready">
-      <section class="home-hero">
-        <div class="home-hero-copy">
-          <span class="home-kicker">✅ Đề đã sẵn sàng</span>
+    <div class="learn-home is-ready">
+      <section class="learn-stage learn-stage-ready">
+        <div class="learn-stage-copy">
+          <span class="learn-eyebrow"><i data-lucide="badge-check"></i> Đề đã sẵn sàng</span>
           <h2>${fileName}</h2>
-          <p>📝 ${data.length} câu hỏi đã được nạp vào phiên luyện tập.</p>
-          <div class="home-actions">
-            <button class="home-primary-action" type="button" onclick="window.startExamNow()">
-              <span class="emoji-pop">🚀</span>
+          <p>${data.length} câu hỏi đã được nạp. Bắt đầu làm bài để hệ thống ghi nhận kết quả, sau đó quay lại ôn đúng nhóm câu bạn còn yếu.</p>
+          <div class="learn-actions">
+            <button class="learn-action-primary" type="button" onclick="window.startExamNow()">
+              <i data-lucide="play"></i>
               <span>Bắt đầu làm bài</span>
             </button>
-            <button class="home-secondary-action" type="button" onclick="document.getElementById('fileInput').click()">
-              <span class="emoji-pop">🔄</span>
+            <button class="learn-action-secondary" type="button" onclick="document.getElementById('fileInput').click()">
+              <i data-lucide="refresh-cw"></i>
               <span>Đổi đề khác</span>
             </button>
-            <button class="home-secondary-action" type="button" onclick="window.clearSelectedExam()" style="color:#ef4444; border-color:#fca5a5; background:rgba(254,242,242,0.8);">
-              <span class="emoji-pop">❌</span>
+            <button class="learn-action-secondary learn-danger-action" type="button" onclick="window.clearSelectedExam()">
+              <i data-lucide="x"></i>
               <span>Bỏ chọn</span>
             </button>
           </div>
         </div>
-        <div class="home-focus-panel">
-          <div class="focus-ring">
-            <span class="emoji-pulse">✅</span>
+        <aside class="learn-console">
+          <div class="learn-console-head">
+            <span>Đề đang kích hoạt</span>
+            <i data-lucide="badge-check"></i>
           </div>
-          <div>
-            <span>Đang chọn</span>
-            <strong>${fileName}</strong>
+          <strong>${fileName}</strong>
+          <div class="learn-console-metrics">
+            <span><i data-lucide="list-checks"></i>${data.length} câu</span>
+            <span><i data-lucide="timer"></i><b id="homeTimePreview">${document.getElementById("timeInput")?.value || 15}</b> phút</span>
           </div>
-        </div>
+          <div class="learn-readiness" aria-hidden="true">
+            <span class="is-on"></span>
+            <span class="is-on"></span>
+            <span></span>
+            <span></span>
+          </div>
+        </aside>
+      </section>
+      <section class="learn-track" aria-label="Lộ trình ôn luyện">
+        <div class="learn-track-line"></div>
+        <div class="learn-step is-active"><span>01</span><strong>Đã nạp</strong><small>${data.length} câu hỏi</small></div>
+        <div class="learn-step is-active"><span>02</span><strong>Sẵn sàng</strong><small><b id="homeTimePreviewCard">${document.getElementById("timeInput")?.value || 15}</b> phút</small></div>
+        <div class="learn-step"><span>03</span><strong>Làm bài</strong><small>Bấm bắt đầu</small></div>
+        <div class="learn-step"><span>04</span><strong>Ôn lại</strong><small>Sau khi chấm</small></div>
+      </section>
+      ${renderHomeHeatmapHTML()}
+      <section class="learn-mode-strip" aria-label="Chế độ học tập">
+        <button type="button" onclick="window.startExamNow()">
+          <i data-lucide="play"></i>
+          <span>Làm bài ngay</span>
+        </button>
+        <button type="button" onclick="document.getElementById('btnOpenStudy')&&document.getElementById('btnOpenStudy').click()">
+          <i data-lucide="layers-3"></i>
+          <span>Flashcard</span>
+        </button>
+        <button type="button" onclick="document.getElementById('btnViewHistory')&&document.getElementById('btnViewHistory').click()">
+          <i data-lucide="chart-spline"></i>
+          <span>Lịch sử học</span>
+        </button>
+        <button type="button" onclick="window.clearSelectedExam()">
+          <i data-lucide="x"></i>
+          <span>Bỏ chọn đề</span>
+        </button>
       </section>
     </div>
   `;
@@ -663,6 +966,7 @@ window.startExamNow = async function () {
     return;
   }
   isReviewMode = false;
+  activeReviewSession = null;
   const cloned = pendingData.data.map((q) => ({
     ...q,
     options: Array.isArray(q.options) ? [...q.options] : [],
@@ -2203,6 +2507,30 @@ function generateQuiz() {
   const letters = ["A", "B", "C", "D", "E", "F"];
   const fragment = document.createDocumentFragment();
 
+  if (activeReviewSession) {
+    const panel = document.createElement("section");
+    panel.id = "reviewSessionPanel";
+    panel.className = "review-session-panel";
+    const highDebt = questionsData.filter((q) => getReviewDebt(q.reviewMeta) >= 3).length;
+    panel.innerHTML = `
+      <div class="review-session-copy">
+        <span>Phiên khắc phục câu sai</span>
+        <h3>${activeReviewSession.title}</h3>
+        <p class="review-session-note">Trả lời từng câu, xem phản hồi ngay, rồi để hệ thống giảm/cộng nợ.</p>
+      </div>
+      <div class="review-session-stats">
+        <span><b>${questionsData.length}</b> câu</span>
+        <span><b>${highDebt}</b> ưu tiên cao</span>
+        <span class="review-session-count">0/${questionsData.length}</span>
+      </div>
+      <div class="review-session-progress"><span class="review-session-fill"></span></div>
+      <button class="review-session-retry" type="button" onclick="window.startReviewRetryRound()" style="display:none">
+        Luyện lại câu vừa sai
+      </button>
+    `;
+    fragment.appendChild(panel);
+  }
+
   questionsData.forEach((q, index) => {
     const card = document.createElement("div");
     card.className = "question-card";
@@ -2213,6 +2541,7 @@ function generateQuiz() {
         <span>📝 Câu ${index + 1}</span>
         <small>${index + 1}/${questionsData.length}</small>
       </div>
+      ${renderReviewCoach(q, index)}
       <div class="question-text">${q.question}</div>
       <div class="options">
     `;
@@ -2268,9 +2597,9 @@ function generateQuiz() {
         if (isReviewMode) {
           const userVal = inp.value;
           const correctVal = (q.answer || "").trim();
+          const isCorrectReview = normalizeText(userVal) === normalizeText(correctVal);
           const labels = card.querySelectorAll(".option-label");
-          const currentExamName =
-            document.getElementById("examName").textContent;
+          const currentExamName = q.reviewMeta?.examName || activeReviewSession?.examName || pendingData?.name || document.getElementById("examName").textContent;
           card.querySelectorAll("input").forEach((i) => (i.disabled = true));
           card.classList.add("locked-card");
           // Xóa màu cũ
@@ -2290,7 +2619,17 @@ function generateQuiz() {
           feedback.innerHTML = "⏳ Đang đồng bộ Cloud...";
           feedback.style.background = "#f1f5f9";
 
-          if (userVal === correctVal) {
+          if (activeReviewSession) {
+            activeReviewSession.answered++;
+            if (isCorrectReview) activeReviewSession.correct++;
+            else {
+              activeReviewSession.wrong++;
+              if (!q.reviewMeta?.retry) activeReviewSession.missedQuestions.push(q);
+            }
+            updateReviewSessionResult();
+          }
+
+          if (isCorrectReview) {
             // --- TRƯỜNG HỢP ĐÚNG ---
             inp.nextElementSibling.classList.add("correct");
             if (btn) btn.classList.add("nav-correct");
@@ -2308,10 +2647,10 @@ function generateQuiz() {
 
                 if (remaining > 0) {
                   feedback.style.background = "#fff7ed"; // Cam nhạt
-                  feedback.innerHTML = `<span style="color:#c2410c">👏 Đúng rồi! Nhưng bạn vẫn còn nợ câu này <b>${remaining}</b> lần nữa.</span>`;
+                  feedback.innerHTML = `<span style="color:#c2410c">Đúng. ${getNextReviewLabel(remaining)}</span>`;
                 } else {
                   feedback.style.background = "#f0fdf4"; // Xanh nhạt
-                  feedback.innerHTML = `<span style="color:#16a34a">🎉 Xuất sắc! Đã xóa câu này khỏi danh sách sai trên Cloud.</span>`;
+                  feedback.innerHTML = `<span style="color:#16a34a">${getNextReviewLabel(remaining)}</span>`;
                 }
               })
               .catch((err) => {
@@ -2325,7 +2664,7 @@ function generateQuiz() {
 
             // Hiện đáp án đúng
             card.querySelectorAll("input").forEach((optInp) => {
-              if (optInp.value === correctVal)
+              if (normalizeText(optInp.value) === normalizeText(correctVal))
                 optInp.nextElementSibling.classList.add("correct");
             });
 
@@ -2333,7 +2672,7 @@ function generateQuiz() {
             updateMistakeInCloud(currentExamName, q.question, false).then(
               () => {
                 feedback.style.background = "#fef2f2"; // Đỏ nhạt
-                feedback.innerHTML = `<span style="color:#dc2626">⚠️ Sai rồi! Đã bị cộng thêm 1 lần phạt vào lịch sử.</span>`;
+                feedback.innerHTML = `<span style="color:#dc2626">Sai ở lần truy hồi này. Hãy đọc giải thích, nói lại quy tắc bằng lời của bạn, rồi bấm "Luyện lại câu vừa sai" sau khi hết vòng.</span>`;
               }
             );
           }
@@ -2524,6 +2863,8 @@ window.resetExam = async function () {
   if (examFinished) {
     pendingData = null;
     questionsData = [];
+    activeReviewSession = null;
+    isReviewMode = false;
     // Reset topResult BEFORE showing mainHeader
     document.getElementById("topResult").style.display = "none";
     document.getElementById("topResult").textContent = "--%";
@@ -2548,6 +2889,8 @@ window.resetExam = async function () {
 
   clearInterval(timerInterval);
   examFinished = false;
+  activeReviewSession = null;
+  isReviewMode = false;
   questionsData = [];
   pendingData = null;
   // Reset topResult BEFORE showing mainHeader
@@ -2638,6 +2981,7 @@ async function fetchHistoryData(uid) {
       .get();
     globalHistoryData = [];
     snap.forEach((d) => globalHistoryData.push({ id: d.id, ...d.data() }));
+    refreshHomeHeatmap();
   } catch (e) { }
 }
 
@@ -3523,8 +3867,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const timeInputEl = document.getElementById("timeInput");
   if (timeInputEl) {
     const syncTimePreview = () => {
-      const preview = document.getElementById("homeTimePreview");
-      if (preview) preview.textContent = timeInputEl.value || 15;
+      document.querySelectorAll("#homeTimePreview, #homeTimePreviewCard").forEach((preview) => {
+        preview.textContent = timeInputEl.value || 15;
+      });
     };
     timeInputEl.addEventListener("input", syncTimePreview);
     syncTimePreview();
@@ -3914,6 +4259,7 @@ window.startFlashcardMode = async function () {
 
   // Setup dữ liệu
   isReviewMode = true;
+  activeReviewSession = null;
   examFinished = false;
   currentFcIndex = 0;
 
@@ -4091,6 +4437,8 @@ window.prevFlashcard = function () {
 window.exitFlashcardMode = function () {
   document.getElementById("flashcardContainer").style.display = "none";
   document.getElementById("quiz").style.display = "block";
+  activeReviewSession = null;
+  isReviewMode = false;
   document.getElementById("examName").textContent = pendingData
     ? pendingData.name
     : "Đề thi";
@@ -4108,60 +4456,25 @@ window.startWeaknessReview = async function () {
   }
   document.getElementById("studyOverlay").classList.remove("open");
 
-  let wrongQuestionsMap = {};
-  globalHistoryData.forEach((exam) => {
-    if (exam.details) {
-      exam.details.forEach((d) => {
-        if (!d.s) {
-          wrongQuestionsMap[d.q.trim()] = {
-            question: d.q,
-            answer: d.a,
-            explain: "Ôn tập lại câu sai từ quá khứ",
-          };
-        }
-      });
-    }
-  });
-
-  const weakList = Object.values(wrongQuestionsMap);
+  const weakList = collectWrongQuestionsFromHistory();
   if (weakList.length === 0) {
-    cloudAlert({ title: "Tuyệt vời", message: "Tuyệt vời! Bạn không có câu sai nào trong lịch sử.", icon: "🎉" });
+    cloudAlert({ title: "Tuyệt vời", message: "Bạn không có câu sai nào đủ dữ liệu trong lịch sử để luyện lại.", icon: "🎉" });
     return;
   }
 
   const confirmWeak = await cloudAlert({
     type: 'confirm',
-    title: 'Ôn tập câu sai',
-    message: `Tìm thấy ${weakList.length} câu bạn từng làm sai.\nBạn có muốn ôn tập lại không?`,
+    title: 'Luyện điểm yếu',
+    message: `Tìm thấy ${weakList.length} câu sai có đủ đáp án thật từ lịch sử.\nBạn muốn luyện lại ngay không?`,
     icon: '🧠'
   });
   if (!confirmWeak) return;
 
-  questionsData = weakList.map((item) => {
-    return {
-      question: item.question,
-      options: [
-        item.answer,
-        "Đáp án sai 1",
-        "Đáp án sai 2",
-        "Đáp án sai 3",
-      ].sort(() => Math.random() - 0.5),
-      answer: item.answer,
-      explain: item.explain,
-    };
-  });
-
-  isReviewMode = true;
-  examFinished = false;
-  document.getElementById("examName").textContent =
-    "🧠 Ôn tập câu sai (Tổng hợp)";
-  setHeaderMode("active");
-  document.getElementById("timer").textContent = "ÔN TẬP";
-  document.getElementById("btnGradeHeader").style.display = "none";
-  document.getElementById("result").innerHTML =
-    "<b style='color:#22c55e'>🧠 LUYỆN TẬP TRUNG</b>";
-  generateQuiz();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  startReviewSession(
+    "🧠 Luyện điểm yếu từ lịch sử",
+    weakList,
+    `<b style="color:#22c55e">🧠 ${weakList.length} câu cần luyện lại</b>`
+  );
 };
 
 // 3. Chế độ: Ôn câu sai (Spaced Repetition - Cloud Version)
@@ -4194,7 +4507,7 @@ window.startReviewMistakes = async function () {
   // 2. Tải danh sách lỗi từ Firebase
   const mistakeData = await fetchMistakesFromCloud(examName);
   const mistakeKeys = Object.keys(mistakeData).filter(
-    (k) => k !== "last_updated" && k !== "_claimedBy" && k !== "_migrated" && k !== "_legacyMerged"
+    (k) => !isMistakeMetaKey(k) && getMistakeCountValue(mistakeData[k]) > 0
   );
 
   // Reset UI
@@ -4208,9 +4521,9 @@ window.startReviewMistakes = async function () {
 
   const confirmReview = await cloudAlert({
     type: 'confirm',
-    title: 'Ôn câu sai (Cloud)',
-    message: `Cloud: Tìm thấy ${mistakeKeys.length} câu bạn chưa thuộc trong đề "${examName}".\nBạn có muốn ôn lại ngay không?`,
-    icon: '☁️'
+    title: 'Phiên khắc phục câu sai',
+    message: `Tìm thấy ${mistakeKeys.length} câu đang còn nợ trong đề "${examName}".\nPhiên này sẽ ưu tiên câu nợ nhiều, yêu cầu bạn tự truy hồi trước khi chọn, phản hồi ngay, và gom câu vừa sai vào vòng sửa lỗi.\nBắt đầu ngay chứ?`,
+    icon: '🧠'
   });
   if (!confirmReview) return;
 
@@ -4221,10 +4534,19 @@ window.startReviewMistakes = async function () {
   }
 
   // Lọc câu hỏi: So sánh mã hóa Base64
-  const reviewQuestions = pendingData.data.filter((q) => {
-    const key = encodeKey(q.question);
-    return mistakeData[key] > 0;
-  });
+  const reviewQuestions = pendingData.data
+    .map((q) => {
+      const directKey = encodeKey(q.question);
+      const smartKey = getSmartKey(q.question);
+      const foundKey = [directKey, smartKey].find((key) => getMistakeCountValue(mistakeData[key]) > 0);
+      if (!foundKey) return null;
+      return buildReviewQuestion(q, {
+        source: "cloud",
+        misses: getMistakeCountValue(mistakeData[foundKey]),
+        examName,
+      });
+    })
+    .filter(Boolean);
 
   if (reviewQuestions.length === 0) {
     cloudAlert({ title: "Lỗi đồng bộ", message: "Dữ liệu trên Cloud không khớp với file đề hiện tại.\n(Có thể nội dung câu hỏi trong file đã bị sửa?)", icon: "⚠️" });
@@ -4232,25 +4554,11 @@ window.startReviewMistakes = async function () {
   }
 
   // 4. Bắt đầu ôn tập
-  questionsData = reviewQuestions.map((q) => ({
-    ...q,
-    options: shuffleArray([...q.options]),
-  }));
-
-  isReviewMode = true;
-  examFinished = false;
-  document.getElementById("examName").textContent = examName;
-  setHeaderMode("active");
-
-  document.getElementById("timer").textContent = "CLOUD";
-  document.getElementById(
-    "result"
-  ).innerHTML = `<b style='color:#ea580c'>🔥 CÒN ${questionsData.length} CÂU CẦN KHẮC PHỤC</b>`;
-  document.getElementById("btnGradeHeader").style.display = "none";
-  document.getElementById("btnGradeNav").style.display = "none";
-
-  generateQuiz();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  startReviewSession(
+    `Khắc phục câu sai: ${examName}`,
+    reviewQuestions,
+    `<b style="color:#ea580c">Còn ${reviewQuestions.length} câu cần khắc phục</b>`
+  );
 };
 
 // ==========================================
@@ -4421,6 +4729,7 @@ function updateGamificationUI() {
   // Cập nhật tên danh hiệu
   const titleEl = document.getElementById("levelTitle");
   titleEl.textContent = rankName;
+  refreshHomeHeatmap();
 }
 
 // Khởi chạy khi login
